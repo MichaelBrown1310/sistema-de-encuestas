@@ -2,7 +2,12 @@ import { createRouter, createWebHistory } from '@ionic/vue-router';
 import LoginPage from '../views/LoginPage.vue';
 import RegisterPage from '../views/RegisterPage.vue';
 import HomePage from '../views/HomePage.vue';
-import { getAuthUser } from '../services/auth';
+import EncuestasPage from '../views/EncuestasPage.vue';
+import ExplorarEncuestasPage from '../views/ExplorarEncuestasPage.vue';
+import CrearEncuestaPage from '../views/CrearEncuestaPage.vue';
+import ResponderEncuestaPage from '../views/ResponderEncuestaPage.vue';
+import RespuestasPage from '../views/RespuestasPage.vue';
+import { obtenerUsuarioAutenticado } from '../services/auth';
 
 const routes = [
   {
@@ -20,6 +25,26 @@ const routes = [
   {
     path: '/home',
     component: HomePage
+  },
+  {
+    path: '/encuestas',
+    component: EncuestasPage
+  },
+  {
+    path: '/encuestas/explorar',
+    component: ExplorarEncuestasPage
+  },
+  {
+    path: '/encuestas/crear',
+    component: CrearEncuestaPage
+  },
+  {
+    path: '/encuestas/:id/responder',
+    component: ResponderEncuestaPage
+  },
+  {
+    path: '/respuestas',
+    component: RespuestasPage
   }
 ];
 
@@ -29,14 +54,15 @@ const router = createRouter({
 });
 
 router.beforeEach((to) => {
-  const user = getAuthUser();
-  const isAuthRoute = to.path === '/login' || to.path === '/register';
+  const usuario = obtenerUsuarioAutenticado();
+  const esRutaAutenticacion = to.path === '/login' || to.path === '/register';
+  const esRutaProtegida = !esRutaAutenticacion;
 
-  if (!user && to.path === '/home') {
+  if (!usuario && esRutaProtegida) {
     return '/login';
   }
 
-  if (user && isAuthRoute) {
+  if (usuario && esRutaAutenticacion) {
     return '/home';
   }
 });

@@ -1,0 +1,98 @@
+import axios from 'axios';
+
+const api = axios.create({
+  baseURL: 'http://localhost:3000/api',
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
+
+export interface OpcionPregunta {
+  id?: number;
+  texto: string;
+  orden?: number;
+}
+
+export interface PreguntaEncuesta {
+  id?: number;
+  enunciado: string;
+  tipo: 'texto' | 'opcion_unica' | 'opcion_multiple';
+  orden?: number;
+  opciones: OpcionPregunta[];
+}
+
+export interface Encuesta {
+  id: number;
+  usuario_id: number;
+  titulo: string;
+  descripcion: string;
+  categoria: string;
+  estado: string;
+  fecha_creacion: string;
+}
+
+export interface EncuestaPublica extends Encuesta {
+  nombre_creador: string;
+}
+
+export interface EncuestaDetallada extends EncuestaPublica {
+  preguntas: PreguntaEncuesta[];
+}
+
+export interface ResumenEncuestas {
+  totalEncuestas: number;
+  totalPublicadas: number;
+  totalBorradores: number;
+}
+
+export interface DatosNuevaEncuesta {
+  usuario_id: number;
+  titulo: string;
+  descripcion: string;
+  categoria: string;
+  estado: string;
+  preguntas: PreguntaEncuesta[];
+}
+
+export interface RespuestaFormulario {
+  pregunta_id: number;
+  opcion_id?: number | null;
+  texto_respuesta?: string | null;
+}
+
+export async function obtenerResumenUsuario(usuarioId: number) {
+  const { data } = await api.get<ResumenEncuestas>(`/encuestas/resumen/${usuarioId}`);
+  return data;
+}
+
+export async function obtenerEncuestasUsuario(usuarioId: number) {
+  const { data } = await api.get<Encuesta[]>(`/encuestas?usuarioId=${usuarioId}`);
+  return data;
+}
+
+export async function obtenerEncuestasPublicadas() {
+  const { data } = await api.get<EncuestaPublica[]>('/encuestas/publicadas');
+  return data;
+}
+
+export async function obtenerEncuestaPublicada(encuestaId: number) {
+  const { data } = await api.get<EncuestaDetallada>(`/encuestas/publicadas/${encuestaId}`);
+  return data;
+}
+
+export async function crearEncuesta(datos: DatosNuevaEncuesta) {
+  const { data } = await api.post('/encuestas', datos);
+  return data;
+}
+
+export async function enviarRespuestasEncuesta(
+  encuestaId: number,
+  usuarioId: number,
+  respuestas: RespuestaFormulario[]
+) {
+  const { data } = await api.post(`/encuestas/${encuestaId}/respuestas`, {
+    usuario_id: usuarioId,
+    respuestas
+  });
+  return data;
+}

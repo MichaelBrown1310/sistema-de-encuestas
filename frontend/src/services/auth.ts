@@ -7,54 +7,54 @@ const api = axios.create({
   }
 });
 
-export interface RegisterPayload {
+export interface DatosRegistro {
   nombre: string;
   correo: string;
   password: string;
 }
 
-export interface LoginPayload {
+export interface DatosInicioSesion {
   correo: string;
   password: string;
 }
 
-export interface AuthUser {
+export interface UsuarioAutenticado {
   id: number;
   nombre: string;
   correo: string;
 }
 
-const AUTH_USER_KEY = 'encuestas_auth_user';
+const CLAVE_USUARIO_AUTENTICADO = 'encuestas_usuario_autenticado';
 
-export async function registerUser(payload: RegisterPayload) {
-  const { data } = await api.post('/auth/register', payload);
+export async function registrarUsuario(datos: DatosRegistro) {
+  const { data } = await api.post('/auth/register', datos);
   return data;
 }
 
-export async function loginUser(payload: LoginPayload) {
-  const { data } = await api.post('/auth/login', payload);
+export async function iniciarSesion(datos: DatosInicioSesion) {
+  const { data } = await api.post('/auth/login', datos);
   return data;
 }
 
-export function saveAuthUser(user: AuthUser) {
-  localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+export function guardarUsuarioAutenticado(usuario: UsuarioAutenticado) {
+  localStorage.setItem(CLAVE_USUARIO_AUTENTICADO, JSON.stringify(usuario));
 }
 
-export function getAuthUser(): AuthUser | null {
-  const savedUser = localStorage.getItem(AUTH_USER_KEY);
+export function obtenerUsuarioAutenticado(): UsuarioAutenticado | null {
+  const usuarioGuardado = localStorage.getItem(CLAVE_USUARIO_AUTENTICADO);
 
-  if (!savedUser) {
+  if (!usuarioGuardado) {
     return null;
   }
 
   try {
-    return JSON.parse(savedUser) as AuthUser;
+    return JSON.parse(usuarioGuardado) as UsuarioAutenticado;
   } catch {
-    localStorage.removeItem(AUTH_USER_KEY);
+    localStorage.removeItem(CLAVE_USUARIO_AUTENTICADO);
     return null;
   }
 }
 
-export function clearAuthUser() {
-  localStorage.removeItem(AUTH_USER_KEY);
+export function limpiarUsuarioAutenticado() {
+  localStorage.removeItem(CLAVE_USUARIO_AUTENTICADO);
 }

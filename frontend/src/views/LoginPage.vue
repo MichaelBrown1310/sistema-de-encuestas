@@ -1,16 +1,16 @@
 <template>
   <ion-page>
-    <ion-content class="auth-content" fullscreen>
-      <div class="auth-wrapper">
-        <ion-card class="auth-card">
+    <ion-content class="autenticacion-contenido" fullscreen>
+      <div class="autenticacion-contenedor">
+        <ion-card class="autenticacion-tarjeta">
           <ion-card-content>
-            <h1 class="auth-title">Iniciar sesion</h1>
-            <p class="auth-subtitle">Ingresa con tu correo y contrasena.</p>
+            <h1 class="autenticacion-titulo">Iniciar sesion</h1>
+            <p class="autenticacion-subtitulo">Ingresa con tu correo y contrasena.</p>
 
             <ion-list lines="none">
               <ion-item>
                 <ion-input
-                  v-model="form.correo"
+                  v-model="formulario.correo"
                   label="Correo"
                   label-placement="stacked"
                   type="email"
@@ -20,7 +20,7 @@
 
               <ion-item>
                 <ion-input
-                  v-model="form.password"
+                  v-model="formulario.password"
                   label="Contrasena"
                   label-placement="stacked"
                   type="password"
@@ -29,15 +29,15 @@
               </ion-item>
             </ion-list>
 
-            <ion-button expand="block" :disabled="loading" @click="handleLogin">
-              {{ loading ? 'Ingresando...' : 'Entrar' }}
+            <ion-button expand="block" :disabled="cargando" @click="manejarInicioSesion">
+              {{ cargando ? 'Ingresando...' : 'Entrar' }}
             </ion-button>
 
-            <ion-text v-if="message" :color="messageType">
-              <p>{{ message }}</p>
+            <ion-text v-if="mensaje" :color="tipoMensaje">
+              <p>{{ mensaje }}</p>
             </ion-text>
 
-            <p class="auth-link">
+            <p class="autenticacion-enlace">
               No tienes cuenta?
               <router-link to="/register">Registrate</router-link>
             </p>
@@ -58,44 +58,56 @@ import {
   IonItem,
   IonList,
   IonPage,
-  IonText
+  IonText,
+  onIonViewWillEnter
 } from '@ionic/vue';
 import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { loginUser, saveAuthUser } from '../services/auth';
+import { guardarUsuarioAutenticado, iniciarSesion } from '../services/auth';
 
-const router = useRouter();
+const enrutador = useRouter();
 
-const form = reactive({
+const formulario = reactive({
   correo: '',
   password: ''
 });
 
-const loading = ref(false);
-const message = ref('');
-const messageType = ref<'success' | 'danger'>('success');
+const cargando = ref(false);
+const mensaje = ref('');
+const tipoMensaje = ref<'success' | 'danger'>('success');
 
-async function handleLogin() {
-  message.value = '';
+function limpiarFormulario() {
+  formulario.correo = '';
+  formulario.password = '';
+  mensaje.value = '';
+  tipoMensaje.value = 'success';
+}
 
-  if (!form.correo || !form.password) {
-    messageType.value = 'danger';
-    message.value = 'Debes completar correo y contrasena.';
+onIonViewWillEnter(() => {
+  limpiarFormulario();
+});
+
+async function manejarInicioSesion() {
+  mensaje.value = '';
+
+  if (!formulario.correo || !formulario.password) {
+    tipoMensaje.value = 'danger';
+    mensaje.value = 'Debes completar correo y contrasena.';
     return;
   }
 
   try {
-    loading.value = true;
-    const response = await loginUser(form);
-    saveAuthUser(response.user);
-    messageType.value = 'success';
-    message.value = response.message;
-    await router.push('/home');
+    cargando.value = true;
+    const respuesta = await iniciarSesion(formulario);
+    guardarUsuarioAutenticado(respuesta.user);
+    tipoMensaje.value = 'success';
+    mensaje.value = respuesta.message;
+    await enrutador.push('/home');
   } catch (error: any) {
-    messageType.value = 'danger';
-    message.value = error.response?.data?.message || 'No se pudo iniciar sesion.';
+    tipoMensaje.value = 'danger';
+    mensaje.value = error.response?.data?.message || 'No se pudo iniciar sesion.';
   } finally {
-    loading.value = false;
+    cargando.value = false;
   }
 }
 </script>
