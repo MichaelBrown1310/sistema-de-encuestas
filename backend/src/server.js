@@ -10,44 +10,79 @@ const app = express();
 const port = Number(process.env.PORT || 3000);
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '15mb' }));
 
-function mapearEncuestaConPreguntas(filas) {
-  const encuestas = new Map();
+function normalizarTexto(valor) {
+  return typeof valor === 'string' ? valor.trim() : '';
+}
+
+function esImagenValida(valor) {
+  if (valor == null || valor === '') {
+    return true;
+  }
+
+  return typeof valor === 'string' && valor.startsWith('data:image/');
+}
+
+function mapearEncuestaDetallada(filas) {
+  if (filas.length === 0) {
+    return null;
+  }
+
+  const encuestaBase = filas[0];
+  const encuesta = {
+    id: encuestaBase.encuesta_id,
+    usuario_id: encuestaBase.usuario_id,
+    titulo: encuestaBase.titulo,
+    descripcion: encuestaBase.descripcion,
+    imagen_portada: encuestaBase.imagen_portada,
+    categoria: encuestaBase.categoria,
+    estado: encuestaBase.estado,
+    mensaje_confirmacion: encuestaBase.mensaje_confirmacion,
+    fecha_creacion: encuestaBase.fecha_creacion,
+    nombre_creador: encuestaBase.nombre_creador,
+    secciones: []
+  };
+
+  const secciones = new Map();
 
   for (const fila of filas) {
-    if (!encuestas.has(fila.encuesta_id)) {
-      encuestas.set(fila.encuesta_id, {
-        id: fila.encuesta_id,
-        usuario_id: fila.usuario_id,
-        titulo: fila.titulo,
-        descripcion: fila.descripcion,
-        categoria: fila.categoria,
-        estado: fila.estado,
-        fecha_creacion: fila.fecha_creacion,
-        nombre_creador: fila.nombre_creador,
-        preguntas: []
-      });
+    if (!fila.seccion_id) {
+      continue;
     }
 
-    const encuesta = encuestas.get(fila.encuesta_id);
+    if (!secciones.has(fila.seccion_id)) {
+      const seccion = {
+        id: fila.seccion_id,
+        titulo: fila.seccion_titulo,
+        descripcion: fila.seccion_descripcion,
+        orden: fila.seccion_orden,
+        preguntas: []
+      };
+
+      secciones.set(fila.seccion_id, seccion);
+      encuesta.secciones.push(seccion);
+    }
 
     if (!fila.pregunta_id) {
       continue;
     }
 
-    let pregunta = encuesta.preguntas.find((item) => item.id === fila.pregunta_id);
+    const seccion = secciones.get(fila.seccion_id);
+    let pregunta = seccion.preguntas.find((item) => item.id === fila.pregunta_id);
 
     if (!pregunta) {
       pregunta = {
         id: fila.pregunta_id,
         enunciado: fila.enunciado,
+        imagen: fila.pregunta_imagen,
         tipo: fila.tipo,
+        es_obligatoria: Boolean(fila.es_obligatoria),
         orden: fila.pregunta_orden,
         opciones: []
       };
 
-      encuesta.preguntas.push(pregunta);
+      seccion.preguntas.push(pregunta);
     }
 
     if (fila.opcion_id) {
@@ -59,15 +94,88 @@ function mapearEncuestaConPreguntas(filas) {
     }
   }
 
-  return Array.from(encuestas.values()).map((encuesta) => ({
-    ...encuesta,
-    preguntas: encuesta.preguntas
-      .sort((a, b) => a.orden - b.orden)
-      .map((pregunta) => ({
-        ...pregunta,
-        opciones: pregunta.opciones.sort((a, b) => a.orden - b.orden)
-      }))
-  }));
+  encuesta.secciones = encuesta.secciones
+    .sort((a, b) => a.orden - b.orden)
+    .map((seccion) => ({
+      ...seccion,
+      preguntas: seccion.preguntas
+        .sort((a, b) => a.orden - b.orden)
+        .map((pregunta) => ({
+          ...pregunta,
+          opciones: pregunta.opciones.sort((a, b) => a.orden - b.orden)
+        }))
+    }));
+
+  return encuesta;
+}
+
+function validarSecciones(secciones) {
+  if (!Array.isArray(secciones) || secciones.length === 0) {
+    return 'Debes agregar al menos una seccion.';
+  }
+
+  for (const seccion of secciones) {
+    if (!normalizarTexto(seccion.titulo)) {
+      return 'Cada seccion debe tener un titulo.';
+    }
+
+    if (!Array.isArray(seccion.preguntas) || seccion.preguntas.length === 0) {
+      return 'Cada seccion debe incluir al menos una pregunta.';
+    }
+
+    for (const pregunta of seccion.preguntas) {
+      if (!normalizarTexto(pregunta.enunciado) || !pregunta.tipo) {
+        return 'Todas las preguntas deben tener enunciado y tipo.';
+      }
+
+      if (!esImagenValida(pregunta.imagen)) {
+        return 'La imagen de una pregunta no tiene un formato valido.';
+      }
+
+      if (
+        ['opcion_unica', 'opcion_multiple'].includes(pregunta.tipo) &&
+        (!Array.isArray(pregunta.opciones) || pregunta.opciones.length < 2)
+      ) {
+        return 'Las preguntas de opcion requieren al menos dos opciones.';
+      }
+
+      if (
+        ['opcion_unica', 'opcion_multiple'].includes(pregunta.tipo) &&
+        pregunta.opciones.some((opcion) => !normalizarTexto(opcion.texto))
+      ) {
+        return 'Todas las opciones deben tener texto.';
+      }
+    }
+  }
+
+  return '';
+}
+
+async function obtenerPreguntasEncuesta(conexion, encuestaId) {
+  const [preguntas] = await conexion.query(
+    `
+    SELECT id, tipo, es_obligatoria
+    FROM preguntas
+    WHERE encuesta_id = ?
+    `,
+    [encuestaId]
+  );
+
+  return preguntas;
+}
+
+async function obtenerOpcionesPreguntas(conexion, encuestaId) {
+  const [opciones] = await conexion.query(
+    `
+    SELECT op.id, op.pregunta_id
+    FROM opciones_pregunta op
+    INNER JOIN preguntas p ON p.id = op.pregunta_id
+    WHERE p.encuesta_id = ?
+    `,
+    [encuestaId]
+  );
+
+  return opciones;
 }
 
 app.get('/api/health', (_req, res) => {
@@ -202,7 +310,16 @@ app.get('/api/encuestas', async (req, res) => {
   try {
     const [encuestas] = await pool.query(
       `
-      SELECT id, usuario_id, titulo, descripcion, categoria, estado, fecha_creacion
+      SELECT
+        id,
+        usuario_id,
+        titulo,
+        descripcion,
+        imagen_portada,
+        categoria,
+        estado,
+        mensaje_confirmacion,
+        fecha_creacion
       FROM encuestas
       WHERE usuario_id = ?
       ORDER BY fecha_creacion DESC
@@ -226,8 +343,10 @@ app.get('/api/encuestas/publicadas', async (_req, res) => {
         e.usuario_id,
         e.titulo,
         e.descripcion,
+        e.imagen_portada,
         e.categoria,
         e.estado,
+        e.mensaje_confirmacion,
         e.fecha_creacion,
         u.nombre AS nombre_creador
       FROM encuestas e
@@ -259,23 +378,32 @@ app.get('/api/encuestas/publicadas/:id', async (req, res) => {
         e.usuario_id,
         e.titulo,
         e.descripcion,
+        e.imagen_portada,
         e.categoria,
         e.estado,
+        e.mensaje_confirmacion,
         e.fecha_creacion,
         u.nombre AS nombre_creador,
+        s.id AS seccion_id,
+        s.titulo AS seccion_titulo,
+        s.descripcion AS seccion_descripcion,
+        s.orden AS seccion_orden,
         p.id AS pregunta_id,
         p.enunciado,
+        p.imagen AS pregunta_imagen,
         p.tipo,
+        p.es_obligatoria,
         p.orden AS pregunta_orden,
         op.id AS opcion_id,
         op.texto AS opcion_texto,
         op.orden AS opcion_orden
       FROM encuestas e
       INNER JOIN usuarios u ON u.id = e.usuario_id
-      LEFT JOIN preguntas p ON p.encuesta_id = e.id
+      LEFT JOIN secciones s ON s.encuesta_id = e.id
+      LEFT JOIN preguntas p ON p.seccion_id = s.id
       LEFT JOIN opciones_pregunta op ON op.pregunta_id = p.id
       WHERE e.id = ? AND e.estado = 'publicada'
-      ORDER BY p.orden ASC, op.orden ASC
+      ORDER BY s.orden ASC, p.orden ASC, op.orden ASC
       `,
       [encuestaId]
     );
@@ -284,7 +412,7 @@ app.get('/api/encuestas/publicadas/:id', async (req, res) => {
       return res.status(404).json({ message: 'Encuesta no encontrada.' });
     }
 
-    const encuesta = mapearEncuestaConPreguntas(filas)[0];
+    const encuesta = mapearEncuestaDetallada(filas);
     return res.json(encuesta);
   } catch (error) {
     console.error('Error al obtener detalle de encuesta:', error);
@@ -293,18 +421,33 @@ app.get('/api/encuestas/publicadas/:id', async (req, res) => {
 });
 
 app.post('/api/encuestas', async (req, res) => {
-  const { usuario_id, titulo, descripcion, categoria, estado, preguntas } = req.body;
+  const {
+    usuario_id,
+    titulo,
+    descripcion,
+    imagen_portada,
+    categoria,
+    estado,
+    mensaje_confirmacion,
+    secciones
+  } = req.body;
 
   if (!usuario_id || !titulo || !descripcion || !categoria || !estado) {
     return res.status(400).json({ message: 'Todos los campos principales son obligatorios.' });
   }
 
-  if (!Array.isArray(preguntas) || preguntas.length === 0) {
-    return res.status(400).json({ message: 'Debes agregar al menos una pregunta.' });
-  }
-
   if (!['borrador', 'publicada'].includes(estado)) {
     return res.status(400).json({ message: 'Estado invalido.' });
+  }
+
+  if (!esImagenValida(imagen_portada)) {
+    return res.status(400).json({ message: 'La imagen de portada no tiene un formato valido.' });
+  }
+
+  const errorValidacion = validarSecciones(secciones);
+
+  if (errorValidacion) {
+    return res.status(400).json({ message: errorValidacion });
   }
 
   const conexion = await pool.getConnection();
@@ -314,53 +457,87 @@ app.post('/api/encuestas', async (req, res) => {
 
     const [resultadoEncuesta] = await conexion.query(
       `
-      INSERT INTO encuestas (usuario_id, titulo, descripcion, categoria, estado)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO encuestas (
+        usuario_id,
+        titulo,
+        descripcion,
+        imagen_portada,
+        categoria,
+        estado,
+        mensaje_confirmacion
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?)
       `,
-      [usuario_id, titulo, descripcion, categoria, estado]
+      [
+        usuario_id,
+        normalizarTexto(titulo),
+        normalizarTexto(descripcion),
+        imagen_portada || null,
+        normalizarTexto(categoria),
+        estado,
+        normalizarTexto(mensaje_confirmacion) || 'Tu respuesta ha sido enviada correctamente.'
+      ]
     );
 
     const encuestaId = resultadoEncuesta.insertId;
 
-    for (let indice = 0; indice < preguntas.length; indice += 1) {
-      const pregunta = preguntas[indice];
-
-      if (!pregunta.enunciado || !pregunta.tipo) {
-        throw new Error('Pregunta invalida.');
-      }
-
-      if (
-        ['opcion_unica', 'opcion_multiple'].includes(pregunta.tipo) &&
-        (!Array.isArray(pregunta.opciones) || pregunta.opciones.length < 2)
-      ) {
-        throw new Error('Las preguntas de opcion requieren al menos dos opciones.');
-      }
-
-      const [resultadoPregunta] = await conexion.query(
+    for (let indiceSeccion = 0; indiceSeccion < secciones.length; indiceSeccion += 1) {
+      const seccion = secciones[indiceSeccion];
+      const [resultadoSeccion] = await conexion.query(
         `
-        INSERT INTO preguntas (encuesta_id, enunciado, tipo, orden)
+        INSERT INTO secciones (encuesta_id, titulo, descripcion, orden)
         VALUES (?, ?, ?, ?)
         `,
-        [encuestaId, pregunta.enunciado, pregunta.tipo, indice + 1]
+        [
+          encuestaId,
+          normalizarTexto(seccion.titulo),
+          normalizarTexto(seccion.descripcion) || null,
+          indiceSeccion + 1
+        ]
       );
 
-      const preguntaId = resultadoPregunta.insertId;
+      const seccionId = resultadoSeccion.insertId;
 
-      if (Array.isArray(pregunta.opciones)) {
-        for (let indiceOpcion = 0; indiceOpcion < pregunta.opciones.length; indiceOpcion += 1) {
-          const opcion = pregunta.opciones[indiceOpcion];
+      for (let indicePregunta = 0; indicePregunta < seccion.preguntas.length; indicePregunta += 1) {
+        const pregunta = seccion.preguntas[indicePregunta];
+        const [resultadoPregunta] = await conexion.query(
+          `
+          INSERT INTO preguntas (
+            encuesta_id,
+            seccion_id,
+            enunciado,
+            imagen,
+            tipo,
+            es_obligatoria,
+            orden
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+          `,
+          [
+            encuestaId,
+            seccionId,
+            normalizarTexto(pregunta.enunciado),
+            pregunta.imagen || null,
+            pregunta.tipo,
+            pregunta.es_obligatoria ? 1 : 0,
+            indicePregunta + 1
+          ]
+        );
 
-          if (!opcion.texto) {
-            throw new Error('Opcion invalida.');
+        const preguntaId = resultadoPregunta.insertId;
+
+        if (Array.isArray(pregunta.opciones) && pregunta.tipo !== 'texto') {
+          for (let indiceOpcion = 0; indiceOpcion < pregunta.opciones.length; indiceOpcion += 1) {
+            const opcion = pregunta.opciones[indiceOpcion];
+
+            await conexion.query(
+              `
+              INSERT INTO opciones_pregunta (pregunta_id, texto, orden)
+              VALUES (?, ?, ?)
+              `,
+              [preguntaId, normalizarTexto(opcion.texto), indiceOpcion + 1]
+            );
           }
-
-          await conexion.query(
-            `
-            INSERT INTO opciones_pregunta (pregunta_id, texto, orden)
-            VALUES (?, ?, ?)
-            `,
-            [preguntaId, opcion.texto, indiceOpcion + 1]
-          );
         }
       }
     }
@@ -370,14 +547,7 @@ app.post('/api/encuestas', async (req, res) => {
   } catch (error) {
     await conexion.rollback();
     console.error('Error al crear encuesta:', error);
-    return res.status(500).json({
-      message:
-        error.message === 'Pregunta invalida.' ||
-        error.message === 'Opcion invalida.' ||
-        error.message === 'Las preguntas de opcion requieren al menos dos opciones.'
-          ? error.message
-          : 'No se pudo crear la encuesta.'
-    });
+    return res.status(500).json({ message: 'No se pudo crear la encuesta.' });
   } finally {
     conexion.release();
   }
@@ -387,7 +557,7 @@ app.post('/api/encuestas/:id/respuestas', async (req, res) => {
   const encuestaId = Number(req.params.id);
   const { usuario_id, respuestas } = req.body;
 
-  if (!encuestaId || !usuario_id || !Array.isArray(respuestas) || respuestas.length === 0) {
+  if (!encuestaId || !usuario_id || !Array.isArray(respuestas)) {
     return res.status(400).json({ message: 'Datos incompletos para registrar la respuesta.' });
   }
 
@@ -397,12 +567,63 @@ app.post('/api/encuestas/:id/respuestas', async (req, res) => {
     await conexion.beginTransaction();
 
     const [encuestas] = await conexion.query(
-      'SELECT id, estado FROM encuestas WHERE id = ? LIMIT 1',
+      'SELECT id, estado, mensaje_confirmacion FROM encuestas WHERE id = ? LIMIT 1',
       [encuestaId]
     );
 
     if (encuestas.length === 0 || encuestas[0].estado !== 'publicada') {
-      throw new Error('Encuesta no disponible.');
+      await conexion.rollback();
+      return res.status(404).json({ message: 'Encuesta no disponible.' });
+    }
+
+    const preguntasEncuesta = await obtenerPreguntasEncuesta(conexion, encuestaId);
+    const opcionesEncuesta = await obtenerOpcionesPreguntas(conexion, encuestaId);
+
+    const preguntasPorId = new Map(preguntasEncuesta.map((pregunta) => [pregunta.id, pregunta]));
+    const opcionesPorId = new Map(opcionesEncuesta.map((opcion) => [opcion.id, opcion]));
+    const preguntasRespondidas = new Set();
+
+    for (const respuesta of respuestas) {
+      const preguntaId = Number(respuesta.pregunta_id);
+      const pregunta = preguntasPorId.get(preguntaId);
+
+      if (!pregunta) {
+        await conexion.rollback();
+        return res.status(400).json({ message: 'Hay respuestas asociadas a preguntas invalidas.' });
+      }
+
+      if (pregunta.tipo === 'texto') {
+        const texto = normalizarTexto(respuesta.texto_respuesta);
+
+        if (!texto) {
+          await conexion.rollback();
+          return res.status(400).json({ message: 'Las respuestas de texto no pueden ir vacias.' });
+        }
+
+        preguntasRespondidas.add(preguntaId);
+        continue;
+      }
+
+      const opcionId = Number(respuesta.opcion_id);
+      const opcion = opcionesPorId.get(opcionId);
+
+      if (!opcion || opcion.pregunta_id !== preguntaId) {
+        await conexion.rollback();
+        return res.status(400).json({ message: 'Hay opciones que no pertenecen a la pregunta.' });
+      }
+
+      preguntasRespondidas.add(preguntaId);
+    }
+
+    const faltantesObligatorias = preguntasEncuesta.filter(
+      (pregunta) => pregunta.es_obligatoria && !preguntasRespondidas.has(pregunta.id)
+    );
+
+    if (faltantesObligatorias.length > 0) {
+      await conexion.rollback();
+      return res.status(400).json({
+        message: 'Debes responder todas las preguntas obligatorias antes de enviar.'
+      });
     }
 
     const [resultadoRespuesta] = await conexion.query(
@@ -416,10 +637,6 @@ app.post('/api/encuestas/:id/respuestas', async (req, res) => {
     const respuestaId = resultadoRespuesta.insertId;
 
     for (const respuesta of respuestas) {
-      if (!respuesta.pregunta_id) {
-        throw new Error('Respuesta invalida.');
-      }
-
       await conexion.query(
         `
         INSERT INTO detalle_respuestas (
@@ -432,24 +649,22 @@ app.post('/api/encuestas/:id/respuestas', async (req, res) => {
         `,
         [
           respuestaId,
-          respuesta.pregunta_id,
-          respuesta.opcion_id || null,
-          respuesta.texto_respuesta || null
+          Number(respuesta.pregunta_id),
+          respuesta.opcion_id ? Number(respuesta.opcion_id) : null,
+          normalizarTexto(respuesta.texto_respuesta) || null
         ]
       );
     }
 
     await conexion.commit();
-    return res.status(201).json({ message: 'Respuesta enviada correctamente.' });
+    return res.status(201).json({
+      message: 'Respuesta enviada correctamente.',
+      mensaje_confirmacion: encuestas[0].mensaje_confirmacion
+    });
   } catch (error) {
     await conexion.rollback();
     console.error('Error al registrar respuestas:', error);
-    return res.status(500).json({
-      message:
-        error.message === 'Encuesta no disponible.' || error.message === 'Respuesta invalida.'
-          ? error.message
-          : 'No se pudo registrar la respuesta.'
-    });
+    return res.status(500).json({ message: 'No se pudo registrar la respuesta.' });
   } finally {
     conexion.release();
   }

@@ -10,8 +10,12 @@
               Aqui veras las encuestas que has creado y su estado actual.
             </p>
           </div>
-
+          <div>
+            <ion-button router-link="/home">Volver a la principal</ion-button>
           <ion-button router-link="/encuestas/crear">Nueva encuesta</ion-button>
+
+          </div>
+          
         </section>
 
         <div v-if="cargando" class="estado-vacio">Cargando encuestas...</div>
@@ -27,7 +31,7 @@
               <p class="tarjeta-encuesta__descripcion">{{ encuesta.descripcion }}</p>
             </div>
             <p class="tarjeta-encuesta__fecha">
-              {{ encuesta.categoria }} · {{ formatearFecha(encuesta.fecha_creacion) }}
+              {{ encuesta.categoria }} | {{ formatearFecha(encuesta.fecha_creacion) }}
             </p>
           </article>
         </div>

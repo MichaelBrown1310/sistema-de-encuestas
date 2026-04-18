@@ -16,9 +16,19 @@ export interface OpcionPregunta {
 export interface PreguntaEncuesta {
   id?: number;
   enunciado: string;
+  imagen?: string | null;
   tipo: 'texto' | 'opcion_unica' | 'opcion_multiple';
+  es_obligatoria: boolean;
   orden?: number;
   opciones: OpcionPregunta[];
+}
+
+export interface SeccionEncuesta {
+  id?: number;
+  titulo: string;
+  descripcion?: string | null;
+  orden?: number;
+  preguntas: PreguntaEncuesta[];
 }
 
 export interface Encuesta {
@@ -26,8 +36,10 @@ export interface Encuesta {
   usuario_id: number;
   titulo: string;
   descripcion: string;
+  imagen_portada?: string | null;
   categoria: string;
   estado: string;
+  mensaje_confirmacion: string;
   fecha_creacion: string;
 }
 
@@ -36,7 +48,7 @@ export interface EncuestaPublica extends Encuesta {
 }
 
 export interface EncuestaDetallada extends EncuestaPublica {
-  preguntas: PreguntaEncuesta[];
+  secciones: SeccionEncuesta[];
 }
 
 export interface ResumenEncuestas {
@@ -49,15 +61,22 @@ export interface DatosNuevaEncuesta {
   usuario_id: number;
   titulo: string;
   descripcion: string;
+  imagen_portada?: string | null;
   categoria: string;
   estado: string;
-  preguntas: PreguntaEncuesta[];
+  mensaje_confirmacion: string;
+  secciones: SeccionEncuesta[];
 }
 
 export interface RespuestaFormulario {
   pregunta_id: number;
   opcion_id?: number | null;
   texto_respuesta?: string | null;
+}
+
+export interface RespuestaEnvioEncuesta {
+  message: string;
+  mensaje_confirmacion: string;
 }
 
 export async function obtenerResumenUsuario(usuarioId: number) {
@@ -90,7 +109,7 @@ export async function enviarRespuestasEncuesta(
   usuarioId: number,
   respuestas: RespuestaFormulario[]
 ) {
-  const { data } = await api.post(`/encuestas/${encuestaId}/respuestas`, {
+  const { data } = await api.post<RespuestaEnvioEncuesta>(`/encuestas/${encuestaId}/respuestas`, {
     usuario_id: usuarioId,
     respuestas
   });

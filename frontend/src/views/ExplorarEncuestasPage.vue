@@ -3,13 +3,16 @@
     <ion-content fullscreen>
       <div class="pagina-contenedor">
         <section class="pagina-encabezado">
+          
           <div>
+            
             <p class="pagina-encabezado__etiqueta">Descubrir</p>
             <h1 class="pagina-encabezado__titulo">Explorar encuestas</h1>
             <p class="pagina-encabezado__texto">
               Estas son algunas encuestas publicadas disponibles para responder.
             </p>
           </div>
+          <ion-button router-link="/home">Volver a la principal</ion-button>
         </section>
 
         <div v-if="cargando" class="estado-vacio">Buscando encuestas publicadas...</div>
@@ -26,7 +29,7 @@
             </div>
             <div class="tarjeta-encuesta__acciones">
               <p class="tarjeta-encuesta__fecha">
-                {{ encuesta.categoria }} · {{ encuesta.nombre_creador }}
+                {{ encuesta.categoria }} | {{ encuesta.nombre_creador }}
               </p>
               <ion-button :router-link="`/encuestas/${encuesta.id}/responder`">
                 Responder

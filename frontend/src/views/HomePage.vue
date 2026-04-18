@@ -94,6 +94,7 @@
           </button>
         </section>
       </div>
+      <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d4854.1841240998265!2d-76.52178949811695!3d3.373644210595877!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8e30a10c98c2acb7%3A0x39bff28d0130fd40!2sCl.%2028%20%2398-82%2C%20Comuna%2017%2C%20Cali%2C%20Valle%20del%20Cauca!5e1!3m2!1ses!2sco!4v1776519412800!5m2!1ses!2sco" width="600" height="450" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
     </ion-content>
   </ion-page>
 </template>
