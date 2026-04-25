@@ -2,8 +2,12 @@
   <AppShell>
     <PageHeader
       etiqueta="Creacion"
-      titulo="Crear encuesta"
-      descripcion="Disena tu encuesta con portada, secciones progresivas y preguntas configurables."
+      :titulo="esEdicion ? 'Editar borrador' : 'Crear encuesta'"
+      :descripcion="
+        esEdicion
+          ? 'Actualiza las preguntas y secciones de tu borrador antes de publicarlo.'
+          : 'Disena tu encuesta, guardala como borrador y publicala cuando este lista.'
+      "
     />
 
     <section class="formulario-panel">
@@ -34,13 +38,6 @@
             label-placement="stacked"
             placeholder="Educacion, tecnologia, salud..."
           />
-        </ion-item>
-
-        <ion-item>
-          <ion-select v-model="formulario.estado" label="Estado" label-placement="stacked">
-            <ion-select-option value="borrador">Borrador</ion-select-option>
-            <ion-select-option value="publicada">Publicada</ion-select-option>
-          </ion-select>
         </ion-item>
 
         <ion-item>
@@ -261,8 +258,16 @@
         </article>
       </div>
 
-      <ion-button expand="block" :disabled="guardando" @click="guardarEncuesta">
-        {{ guardando ? 'Guardando...' : 'Guardar encuesta' }}
+      <ion-button expand="block" :disabled="guardando || cargandoEncuesta" @click="guardarEncuesta">
+        {{
+          cargandoEncuesta
+            ? 'Cargando borrador...'
+            : guardando
+              ? 'Guardando...'
+              : esEdicion
+                ? 'Guardar cambios del borrador'
+                : 'Guardar borrador'
+        }}
       </ion-button>
 
       <ion-text v-if="mensaje" :color="tipoMensaje">
@@ -281,14 +286,21 @@ import {
   IonSelect,
   IonSelectOption,
   IonText,
-  IonTextarea
+  IonTextarea,
+  onIonViewWillEnter
 } from '@ionic/vue';
-import { reactive, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed, reactive, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import AppShell from '../components/AppShell.vue';
 import PageHeader from '../components/PageHeader.vue';
 import { obtenerUsuarioAutenticado } from '../services/auth';
-import { crearEncuesta, type PreguntaEncuesta } from '../services/encuestas';
+import {
+  actualizarEncuesta,
+  crearEncuesta,
+  obtenerEncuestaPropia,
+  type EncuestaDetallada,
+  type PreguntaEncuesta
+} from '../services/encuestas';
 
 interface OpcionEditable {
   id_temporal: number;
@@ -309,6 +321,7 @@ interface SeccionEditable {
 }
 
 const enrutador = useRouter();
+const ruta = useRoute();
 const usuario = obtenerUsuarioAutenticado();
 
 let consecutivoSeccion = 1;
@@ -316,14 +329,18 @@ let consecutivoPregunta = 1;
 let consecutivoOpcion = 1;
 
 const guardando = ref(false);
+const cargandoEncuesta = ref(false);
 const mensaje = ref('');
 const tipoMensaje = ref<'success' | 'danger'>('success');
 const arrastreActual = ref<{ seccionId: number; preguntaId: number } | null>(null);
 
-function crearOpcionBase(): OpcionEditable {
+const esEdicion = computed(() => Boolean(ruta.params.id));
+const encuestaId = computed(() => Number(ruta.params.id || 0));
+
+function crearOpcionBase(texto = ''): OpcionEditable {
   return {
     id_temporal: consecutivoOpcion++,
-    texto: ''
+    texto
   };
 }
 
@@ -357,7 +374,14 @@ const formulario = reactive({
   secciones: [crearSeccionBase()]
 });
 
+function reiniciarConsecutivos() {
+  consecutivoSeccion = 1;
+  consecutivoPregunta = 1;
+  consecutivoOpcion = 1;
+}
+
 function limpiarFormulario() {
+  reiniciarConsecutivos();
   formulario.titulo = '';
   formulario.descripcion = '';
   formulario.imagen_portada = null;
@@ -365,6 +389,33 @@ function limpiarFormulario() {
   formulario.estado = 'borrador';
   formulario.mensaje_confirmacion = 'Tu respuesta ha sido enviada correctamente.';
   formulario.secciones = [crearSeccionBase()];
+}
+
+function cargarEncuestaEnFormulario(encuesta: EncuestaDetallada) {
+  reiniciarConsecutivos();
+  formulario.titulo = encuesta.titulo;
+  formulario.descripcion = encuesta.descripcion;
+  formulario.imagen_portada = encuesta.imagen_portada || null;
+  formulario.categoria = encuesta.categoria;
+  formulario.estado = 'borrador';
+  formulario.mensaje_confirmacion = encuesta.mensaje_confirmacion;
+  formulario.secciones = encuesta.secciones.map((seccion) => ({
+    id_temporal: consecutivoSeccion++,
+    titulo: seccion.titulo,
+    descripcion: seccion.descripcion || '',
+    preguntas: seccion.preguntas.map((pregunta) => ({
+      id_temporal: consecutivoPregunta++,
+      enunciado: pregunta.enunciado,
+      imagen: pregunta.imagen || null,
+      tipo: pregunta.tipo,
+      es_obligatoria: pregunta.es_obligatoria,
+      opciones: pregunta.opciones.map((opcion) => crearOpcionBase(opcion.texto))
+    }))
+  }));
+
+  if (formulario.secciones.length === 0) {
+    formulario.secciones = [crearSeccionBase()];
+  }
 }
 
 function agregarSeccion() {
@@ -570,6 +621,62 @@ function validarFormulario() {
   return '';
 }
 
+function construirPayload() {
+  return {
+    usuario_id: usuario!.id,
+    titulo: formulario.titulo.trim(),
+    descripcion: formulario.descripcion.trim(),
+    imagen_portada: formulario.imagen_portada,
+    categoria: formulario.categoria.trim(),
+    estado: 'borrador',
+    mensaje_confirmacion: formulario.mensaje_confirmacion.trim(),
+    secciones: formulario.secciones.map((seccion, indiceSeccion) => ({
+      titulo: seccion.titulo.trim(),
+      descripcion: seccion.descripcion.trim(),
+      orden: indiceSeccion + 1,
+      preguntas: seccion.preguntas.map((pregunta, indicePregunta) => ({
+        enunciado: pregunta.enunciado.trim(),
+        imagen: pregunta.imagen,
+        tipo: pregunta.tipo,
+        es_obligatoria: pregunta.es_obligatoria,
+        orden: indicePregunta + 1,
+        opciones:
+          pregunta.tipo === 'texto'
+            ? []
+            : pregunta.opciones.map((opcion, indiceOpcion) => ({
+                texto: opcion.texto.trim(),
+                orden: indiceOpcion + 1
+              }))
+      }))
+    }))
+  };
+}
+
+async function cargarEncuestaEditable() {
+  if (!usuario || !esEdicion.value || !encuestaId.value) {
+    return;
+  }
+
+  try {
+    cargandoEncuesta.value = true;
+    const encuesta = await obtenerEncuestaPropia(encuestaId.value, usuario.id);
+
+    if (encuesta.estado !== 'borrador') {
+      tipoMensaje.value = 'danger';
+      mensaje.value = 'Solo los borradores se pueden editar.';
+      await enrutador.replace('/encuestas');
+      return;
+    }
+
+    cargarEncuestaEnFormulario(encuesta);
+  } catch (error: any) {
+    tipoMensaje.value = 'danger';
+    mensaje.value = error.response?.data?.message || 'No se pudo cargar el borrador.';
+  } finally {
+    cargandoEncuesta.value = false;
+  }
+}
+
 async function guardarEncuesta() {
   mensaje.value = '';
 
@@ -584,38 +691,17 @@ async function guardarEncuesta() {
   try {
     guardando.value = true;
 
-    await crearEncuesta({
-      usuario_id: usuario.id,
-      titulo: formulario.titulo.trim(),
-      descripcion: formulario.descripcion.trim(),
-      imagen_portada: formulario.imagen_portada,
-      categoria: formulario.categoria.trim(),
-      estado: formulario.estado,
-      mensaje_confirmacion: formulario.mensaje_confirmacion.trim(),
-      secciones: formulario.secciones.map((seccion, indiceSeccion) => ({
-        titulo: seccion.titulo.trim(),
-        descripcion: seccion.descripcion.trim(),
-        orden: indiceSeccion + 1,
-        preguntas: seccion.preguntas.map((pregunta, indicePregunta) => ({
-          enunciado: pregunta.enunciado.trim(),
-          imagen: pregunta.imagen,
-          tipo: pregunta.tipo,
-          es_obligatoria: pregunta.es_obligatoria,
-          orden: indicePregunta + 1,
-          opciones:
-            pregunta.tipo === 'texto'
-              ? []
-              : pregunta.opciones.map((opcion, indiceOpcion) => ({
-                  texto: opcion.texto.trim(),
-                  orden: indiceOpcion + 1
-                }))
-        }))
-      }))
-    });
+    if (esEdicion.value && encuestaId.value) {
+      await actualizarEncuesta(encuestaId.value, construirPayload());
+      tipoMensaje.value = 'success';
+      mensaje.value = 'Borrador actualizado correctamente.';
+    } else {
+      await crearEncuesta(construirPayload());
+      tipoMensaje.value = 'success';
+      mensaje.value = 'Borrador creado correctamente.';
+      limpiarFormulario();
+    }
 
-    tipoMensaje.value = 'success';
-    mensaje.value = 'Encuesta creada correctamente.';
-    limpiarFormulario();
     await enrutador.replace('/encuestas');
   } catch (error: any) {
     tipoMensaje.value = 'danger';
@@ -624,6 +710,17 @@ async function guardarEncuesta() {
     guardando.value = false;
   }
 }
+
+onIonViewWillEnter(() => {
+  mensaje.value = '';
+
+  if (esEdicion.value) {
+    cargarEncuestaEditable();
+    return;
+  }
+
+  limpiarFormulario();
+});
 </script>
 
 <style scoped>

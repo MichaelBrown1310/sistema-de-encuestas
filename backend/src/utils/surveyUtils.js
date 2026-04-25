@@ -25,6 +25,7 @@ export function mapearEncuestaDetallada(filas) {
     categoria: encuestaBase.categoria,
     estado: encuestaBase.estado,
     mensaje_confirmacion: encuestaBase.mensaje_confirmacion,
+    esta_oculta: Boolean(encuestaBase.esta_oculta),
     fecha_creacion: encuestaBase.fecha_creacion,
     nombre_creador: encuestaBase.nombre_creador,
     secciones: []
@@ -91,6 +92,77 @@ export function mapearEncuestaDetallada(filas) {
           opciones: pregunta.opciones.sort((a, b) => a.orden - b.orden)
         }))
     }));
+
+  return encuesta;
+}
+
+export function mapearRespuestasRecibidas(filas) {
+  if (filas.length === 0) {
+    return null;
+  }
+
+  const base = filas[0];
+  const encuesta = {
+    id: base.encuesta_id,
+    titulo: base.encuesta_titulo,
+    estado: base.encuesta_estado,
+    respuestas: []
+  };
+
+  const respuestas = new Map();
+
+  for (const fila of filas) {
+    if (!respuestas.has(fila.respuesta_id)) {
+      respuestas.set(fila.respuesta_id, {
+        id: fila.respuesta_id,
+        fecha_respuesta: fila.fecha_respuesta,
+        respondedor: {
+          id: fila.respondedor_id,
+          nombre: fila.respondedor_nombre,
+          correo: fila.respondedor_correo
+        },
+        detalles: []
+      });
+
+      encuesta.respuestas.push(respuestas.get(fila.respuesta_id));
+    }
+
+    const respuesta = respuestas.get(fila.respuesta_id);
+    let detalle = respuesta.detalles.find((item) => item.pregunta_id === fila.pregunta_id);
+
+    if (!detalle) {
+      detalle = {
+        seccion_id: fila.seccion_id,
+        seccion_titulo: fila.seccion_titulo,
+        seccion_orden: fila.seccion_orden,
+        pregunta_id: fila.pregunta_id,
+        enunciado: fila.enunciado,
+        tipo: fila.tipo,
+        pregunta_orden: fila.pregunta_orden,
+        texto_respuesta: fila.texto_respuesta,
+        opciones: []
+      };
+
+      respuesta.detalles.push(detalle);
+    }
+
+    if (fila.opcion_id) {
+      detalle.opciones.push({
+        id: fila.opcion_id,
+        texto: fila.opcion_texto
+      });
+    }
+  }
+
+  for (const respuesta of encuesta.respuestas) {
+    respuesta.detalles.sort((a, b) => {
+      if (a.seccion_orden !== b.seccion_orden) {
+        return a.seccion_orden - b.seccion_orden;
+      }
+
+      return a.pregunta_orden - b.pregunta_orden;
+    });
+  }
 
   return encuesta;
 }

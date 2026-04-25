@@ -33,6 +33,7 @@ export interface Encuesta {
   categoria: string;
   estado: string;
   mensaje_confirmacion: string;
+  esta_oculta?: boolean;
   fecha_creacion: string;
 }
 
@@ -72,6 +73,34 @@ export interface RespuestaEnvioEncuesta {
   mensaje_confirmacion: string;
 }
 
+export interface RespuestaRecibidaDetalle {
+  seccion_id: number;
+  seccion_titulo: string;
+  pregunta_id: number;
+  enunciado: string;
+  tipo: string;
+  texto_respuesta?: string | null;
+  opciones: OpcionPregunta[];
+}
+
+export interface RespuestaRecibida {
+  id: number;
+  fecha_respuesta: string;
+  respondedor: {
+    id: number;
+    nombre: string;
+    correo: string;
+  };
+  detalles: RespuestaRecibidaDetalle[];
+}
+
+export interface RespuestasRecibidasEncuesta {
+  id: number;
+  titulo: string;
+  estado: string;
+  respuestas: RespuestaRecibida[];
+}
+
 export async function obtenerResumenUsuario(usuarioId: number) {
   const { data } = await api.get<ResumenEncuestas>(`/encuestas/resumen/${usuarioId}`);
   return data;
@@ -92,8 +121,49 @@ export async function obtenerEncuestaPublicada(encuestaId: number) {
   return data;
 }
 
+export async function obtenerEncuestaPropia(encuestaId: number, usuarioId: number) {
+  const { data } = await api.get<EncuestaDetallada>(`/encuestas/${encuestaId}?usuarioId=${usuarioId}`);
+  return data;
+}
+
 export async function crearEncuesta(datos: DatosNuevaEncuesta) {
   const { data } = await api.post('/encuestas', datos);
+  return data;
+}
+
+export async function actualizarEncuesta(encuestaId: number, datos: DatosNuevaEncuesta) {
+  const { data } = await api.put(`/encuestas/${encuestaId}`, datos);
+  return data;
+}
+
+export async function publicarEncuesta(encuestaId: number, usuarioId: number) {
+  const { data } = await api.post(`/encuestas/${encuestaId}/publicar`, {
+    usuario_id: usuarioId
+  });
+  return data;
+}
+
+export async function cambiarOcultamientoEncuesta(
+  encuestaId: number,
+  usuarioId: number,
+  estaOculta: boolean
+) {
+  const { data } = await api.post(`/encuestas/${encuestaId}/ocultar`, {
+    usuario_id: usuarioId,
+    esta_oculta: estaOculta
+  });
+  return data;
+}
+
+export async function eliminarEncuesta(encuestaId: number, usuarioId: number) {
+  const { data } = await api.delete(`/encuestas/${encuestaId}?usuarioId=${usuarioId}`);
+  return data;
+}
+
+export async function obtenerRespuestasRecibidas(encuestaId: number, usuarioId: number) {
+  const { data } = await api.get<RespuestasRecibidasEncuesta>(
+    `/encuestas/${encuestaId}/respuestas?usuarioId=${usuarioId}`
+  );
   return data;
 }
 

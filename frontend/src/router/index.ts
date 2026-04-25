@@ -7,6 +7,7 @@ import ExplorarEncuestasPage from '../views/ExplorarEncuestasPage.vue';
 import CrearEncuestaPage from '../views/CrearEncuestaPage.vue';
 import ResponderEncuestaPage from '../views/ResponderEncuestaPage.vue';
 import RespuestasPage from '../views/RespuestasPage.vue';
+import SurveyResponsesPage from '../views/SurveyResponsesPage.vue';
 import { obtenerUsuarioAutenticado } from '../services/auth';
 
 const routes = [
@@ -39,8 +40,16 @@ const routes = [
     component: CrearEncuestaPage
   },
   {
+    path: '/encuestas/:id/editar',
+    component: CrearEncuestaPage
+  },
+  {
     path: '/encuestas/:id/responder',
     component: ResponderEncuestaPage
+  },
+  {
+    path: '/encuestas/:id/respuestas',
+    component: SurveyResponsesPage
   },
   {
     path: '/respuestas',

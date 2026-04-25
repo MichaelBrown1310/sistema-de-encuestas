@@ -82,6 +82,14 @@ export async function inicializarEsquema() {
     `);
   }
 
+  if (!(await existeColumna('encuestas', 'esta_oculta'))) {
+    await pool.query(`
+      ALTER TABLE encuestas
+      ADD COLUMN esta_oculta TINYINT(1) NOT NULL DEFAULT 0
+      AFTER mensaje_confirmacion
+    `);
+  }
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS secciones (
       id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
