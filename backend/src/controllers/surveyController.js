@@ -22,6 +22,9 @@ import {
   usuarioYaRespondioEncuesta
 } from '../models/surveyModel.js';
 import {
+  construirFilasExportacion,
+  convertirFilasACsv,
+  convertirFilasAExcelXml,
   esImagenValida,
   mapearEncuestaDetallada,
   mapearDetalleRespuestaUsuario,
@@ -37,6 +40,57 @@ async function rollbackSeguro(conexion, contexto) {
     await conexion.rollback();
   } catch (rollbackError) {
     console.error(`No se pudo revertir la transaccion en ${contexto}:`, rollbackError);
+  }
+}
+
+export async function exportarRespuestasEncuesta(req, res) {
+  const encuestaId = Number(req.params.id);
+  const usuarioId = Number(req.query.usuarioId);
+  const formato = String(req.query.formato || 'csv').toLowerCase();
+
+  if (!encuestaId || !usuarioId) {
+    return res.status(400).json({ message: 'Datos invalidos.' });
+  }
+
+  if (!['csv', 'excel'].includes(formato)) {
+    return res.status(400).json({ message: 'Formato de exportacion invalido.' });
+  }
+
+  try {
+    const filas = await obtenerRespuestasRecibidas(encuestaId, usuarioId);
+    const encuesta = await obtenerDetalleEncuestaPorUsuario(encuestaId, usuarioId);
+
+    if (encuesta.length === 0) {
+      return res.status(404).json({ message: 'Encuesta no encontrada.' });
+    }
+
+    const datosMapeados =
+      filas.length === 0
+        ? {
+            id: encuestaId,
+            titulo: encuesta[0].titulo,
+            estado: encuesta[0].estado,
+            respuestas: []
+          }
+        : mapearRespuestasRecibidas(filas);
+
+    const filasExportacion = construirFilasExportacion(datosMapeados);
+    const nombreBase = `respuestas-encuesta-${encuestaId}`;
+
+    if (formato === 'excel') {
+      const contenido = convertirFilasAExcelXml(encuesta[0].titulo, filasExportacion);
+      res.setHeader('Content-Type', 'application/vnd.ms-excel; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${nombreBase}.xls"`);
+      return res.send(contenido);
+    }
+
+    const contenido = convertirFilasACsv(filasExportacion);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${nombreBase}.csv"`);
+    return res.send(contenido);
+  } catch (error) {
+    console.error('Error al exportar respuestas:', error);
+    return res.status(500).json({ message: 'No se pudieron exportar las respuestas.' });
   }
 }
 
@@ -187,6 +241,69 @@ export async function crearEncuesta(req, res) {
     await rollbackSeguro(conexion, 'crearEncuesta');
     console.error('Error al crear encuesta:', error);
     return res.status(500).json({ message: 'No se pudo crear la encuesta.' });
+  } finally {
+    conexion.release();
+  }
+}
+
+export async function duplicarEncuestaPropia(req, res) {
+  const encuestaId = Number(req.params.id);
+  const usuarioId = Number(req.body.usuario_id);
+
+  if (!encuestaId || !usuarioId) {
+    return res.status(400).json({ message: 'Datos invalidos.' });
+  }
+
+  const conexion = await pool.getConnection();
+
+  try {
+    await conexion.beginTransaction();
+
+    const filas = await obtenerDetalleEncuestaPorUsuario(encuestaId, usuarioId);
+
+    if (filas.length === 0) {
+      await rollbackSeguro(conexion, 'duplicarEncuestaPropia');
+      return res.status(404).json({ message: 'Encuesta no encontrada.' });
+    }
+
+    const encuesta = mapearEncuestaDetallada(filas);
+
+    const nuevaEncuestaId = await crearEncuestaCompleta(
+      {
+        usuario_id: usuarioId,
+        titulo: encuesta.titulo,
+        descripcion: encuesta.descripcion,
+        imagen_portada: encuesta.imagen_portada || null,
+        categoria: encuesta.categoria,
+        estado: 'borrador',
+        mensaje_confirmacion: encuesta.mensaje_confirmacion,
+        respuesta_unica_usuario: Boolean(encuesta.respuesta_unica_usuario),
+        secciones: encuesta.secciones.map((seccion) => ({
+          titulo: seccion.titulo,
+          descripcion: seccion.descripcion || null,
+          preguntas: seccion.preguntas.map((pregunta) => ({
+            enunciado: pregunta.enunciado,
+            imagen: pregunta.imagen || null,
+            tipo: pregunta.tipo,
+            es_obligatoria: pregunta.es_obligatoria,
+            opciones: (pregunta.opciones || []).map((opcion) => ({
+              texto: opcion.texto
+            }))
+          }))
+        }))
+      },
+      conexion
+    );
+
+    await conexion.commit();
+    return res.status(201).json({
+      message: 'Encuesta duplicada correctamente como borrador.',
+      id: nuevaEncuestaId
+    });
+  } catch (error) {
+    await rollbackSeguro(conexion, 'duplicarEncuestaPropia');
+    console.error('Error al duplicar encuesta:', error);
+    return res.status(500).json({ message: 'No se pudo duplicar la encuesta.' });
   } finally {
     conexion.release();
   }

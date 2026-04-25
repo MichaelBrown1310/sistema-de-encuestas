@@ -2,7 +2,9 @@ import { Router } from 'express';
 import {
   actualizarEncuestaBorrador,
   crearEncuesta,
+  duplicarEncuestaPropia,
   eliminarEncuestaPropia,
+  exportarRespuestasEncuesta,
   listarMisRespuestas,
   listarEncuestasPublicadas,
   listarRespuestasRecibidas,
@@ -24,9 +26,11 @@ router.get('/mis-respuestas/:respuestaId', obtenerMiRespuesta);
 router.get('/', listarEncuestasUsuario);
 router.get('/publicadas', listarEncuestasPublicadas);
 router.get('/publicadas/:id', obtenerEncuestaPublicada);
+router.get('/:id/exportar', exportarRespuestasEncuesta);
 router.get('/:id/respuestas', listarRespuestasRecibidas);
 router.get('/:id', obtenerEncuestaPropia);
 router.post('/', crearEncuesta);
+router.post('/:id/duplicar', duplicarEncuestaPropia);
 router.put('/:id', actualizarEncuestaBorrador);
 router.post('/:id/publicar', publicarEncuesta);
 router.post('/:id/ocultar', ocultarEncuesta);

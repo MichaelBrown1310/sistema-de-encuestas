@@ -4,7 +4,23 @@
       etiqueta="Resultados"
       :titulo="datosEncuesta?.titulo || 'Respuestas de la encuesta'"
       descripcion="Aqui puedes revisar quienes respondieron, ver sus respuestas y consultar el comportamiento de las preguntas con opciones."
-    />
+    >
+      <template #actions>
+        <ion-button
+          fill="outline"
+          :disabled="!datosEncuesta || exportando"
+          @click="descargarArchivo('csv')"
+        >
+          {{ exportando && formatoExportacion === 'csv' ? 'Exportando CSV...' : 'Exportar CSV' }}
+        </ion-button>
+        <ion-button
+          :disabled="!datosEncuesta || exportando"
+          @click="descargarArchivo('excel')"
+        >
+          {{ exportando && formatoExportacion === 'excel' ? 'Exportando Excel...' : 'Exportar Excel' }}
+        </ion-button>
+      </template>
+    </PageHeader>
 
     <div v-if="cargando" class="estado-vacio">Cargando respuestas...</div>
     <div v-else-if="!datosEncuesta" class="estado-vacio">No se encontro la encuesta solicitada.</div>
@@ -113,13 +129,14 @@
 </template>
 
 <script setup lang="ts">
-import { onIonViewWillEnter } from '@ionic/vue';
+import { IonButton, onIonViewWillEnter } from '@ionic/vue';
 import { computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import AppShell from '../components/AppShell.vue';
 import PageHeader from '../components/PageHeader.vue';
 import { obtenerUsuarioAutenticado } from '../services/auth';
 import {
+  exportarRespuestasEncuesta,
   obtenerRespuestasRecibidas,
   type RespuestasRecibidasEncuesta
 } from '../services/encuestas';
@@ -145,6 +162,8 @@ const PALETA = ['#175cd3', '#0f766e', '#ea580c', '#7c3aed', '#dc2626', '#0891b2'
 const ruta = useRoute();
 const usuario = obtenerUsuarioAutenticado();
 const cargando = ref(false);
+const exportando = ref(false);
+const formatoExportacion = ref<'csv' | 'excel' | ''>('');
 const datosEncuesta = ref<RespuestasRecibidasEncuesta | null>(null);
 
 const preguntasGraficables = computed<PreguntaGrafica[]>(() => {
@@ -229,6 +248,37 @@ function construirGradiente(segmentos: SegmentoGrafica[]) {
   });
 
   return `conic-gradient(${partes.join(', ')})`;
+}
+
+function descargarBlob(blob: Blob, nombreArchivo: string) {
+  const url = window.URL.createObjectURL(blob);
+  const enlace = document.createElement('a');
+  enlace.href = url;
+  enlace.download = nombreArchivo;
+  document.body.appendChild(enlace);
+  enlace.click();
+  enlace.remove();
+  window.URL.revokeObjectURL(url);
+}
+
+async function descargarArchivo(formato: 'csv' | 'excel') {
+  const encuestaId = Number(ruta.params.id);
+
+  if (!usuario || !encuestaId) {
+    return;
+  }
+
+  try {
+    exportando.value = true;
+    formatoExportacion.value = formato;
+    const archivo = await exportarRespuestasEncuesta(encuestaId, usuario.id, formato);
+    descargarBlob(archivo.blob, archivo.nombreArchivo);
+  } catch (error) {
+    console.error(`No se pudo exportar en formato ${formato}:`, error);
+  } finally {
+    exportando.value = false;
+    formatoExportacion.value = '';
+  }
 }
 
 async function cargarRespuestas() {

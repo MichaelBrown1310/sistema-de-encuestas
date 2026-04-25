@@ -186,6 +186,140 @@ export function mapearDetalleRespuestaUsuario(filas) {
   return respuesta;
 }
 
+export function construirFilasExportacion(respuestasEncuesta) {
+  const filas = [];
+
+  for (const respuesta of respuestasEncuesta.respuestas || []) {
+    for (const detalle of respuesta.detalles || []) {
+      filas.push({
+        respuesta_id: respuesta.id,
+        fecha_respuesta: respuesta.fecha_respuesta,
+        respondedor_nombre: respuesta.respondedor.nombre,
+        respondedor_correo: respuesta.respondedor.correo,
+        seccion: detalle.seccion_titulo,
+        pregunta: detalle.enunciado,
+        tipo: detalle.tipo,
+        respuesta:
+          detalle.texto_respuesta || detalle.opciones.map((opcion) => opcion.texto).join(' | ')
+      });
+    }
+  }
+
+  return filas;
+}
+
+export function convertirFilasACsv(filas) {
+  const encabezados = [
+    'Respuesta ID',
+    'Fecha respuesta',
+    'Nombre',
+    'Correo',
+    'Seccion',
+    'Pregunta',
+    'Tipo',
+    'Respuesta'
+  ];
+
+  const escapar = (valor) => {
+    const texto = String(valor ?? '');
+    return `"${texto.replace(/"/g, '""')}"`;
+  };
+
+  const lineas = [
+    encabezados.join(','),
+    ...filas.map((fila) =>
+      [
+        fila.respuesta_id,
+        fila.fecha_respuesta,
+        fila.respondedor_nombre,
+        fila.respondedor_correo,
+        fila.seccion,
+        fila.pregunta,
+        fila.tipo,
+        fila.respuesta
+      ]
+        .map(escapar)
+        .join(',')
+    )
+  ];
+
+  return `\uFEFF${lineas.join('\n')}`;
+}
+
+export function convertirFilasAExcelXml(tituloEncuesta, filas) {
+  const escaparXml = (valor) =>
+    String(valor ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;');
+
+  const encabezados = [
+    'Respuesta ID',
+    'Fecha respuesta',
+    'Nombre',
+    'Correo',
+    'Seccion',
+    'Pregunta',
+    'Tipo',
+    'Respuesta'
+  ];
+
+  const filasXml = filas
+    .map((fila) => {
+      const celdas = [
+        fila.respuesta_id,
+        fila.fecha_respuesta,
+        fila.respondedor_nombre,
+        fila.respondedor_correo,
+        fila.seccion,
+        fila.pregunta,
+        fila.tipo,
+        fila.respuesta
+      ]
+        .map(
+          (valor) =>
+            `<Cell><Data ss:Type="String">${escaparXml(valor)}</Data></Cell>`
+        )
+        .join('');
+
+      return `<Row>${celdas}</Row>`;
+    })
+    .join('');
+
+  const encabezadosXml = encabezados
+    .map(
+      (encabezado) =>
+        `<Cell ss:StyleID="header"><Data ss:Type="String">${escaparXml(encabezado)}</Data></Cell>`
+    )
+    .join('');
+
+  return `<?xml version="1.0"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:html="http://www.w3.org/TR/REC-html40">
+ <DocumentProperties xmlns="urn:schemas-microsoft-com:office:office">
+  <Title>${escaparXml(tituloEncuesta)}</Title>
+ </DocumentProperties>
+ <Styles>
+  <Style ss:ID="header">
+   <Font ss:Bold="1"/>
+   <Interior ss:Color="#DCEBFF" ss:Pattern="Solid"/>
+  </Style>
+ </Styles>
+ <Worksheet ss:Name="Respuestas">
+  <Table>
+   <Row>${encabezadosXml}</Row>
+   ${filasXml}
+  </Table>
+ </Worksheet>
+</Workbook>`;
+}
+
 export function mapearRespuestasRecibidas(filas) {
   if (filas.length === 0) {
     return null;

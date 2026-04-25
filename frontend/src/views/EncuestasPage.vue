@@ -27,6 +27,15 @@
         <template #actions>
           <div class="acciones-encuesta">
             <ion-button
+              fill="outline"
+              size="small"
+              :disabled="procesandoId === encuesta.id"
+              @click="manejarDuplicacion(encuesta.id)"
+            >
+              Duplicar
+            </ion-button>
+
+            <ion-button
               v-if="encuesta.estado === 'borrador'"
               fill="outline"
               size="small"
@@ -92,6 +101,7 @@ import SurveyCard from '../components/SurveyCard.vue';
 import { obtenerUsuarioAutenticado } from '../services/auth';
 import {
   cambiarOcultamientoEncuesta,
+  duplicarEncuesta,
   eliminarEncuesta,
   obtenerEncuestasUsuario,
   publicarEncuesta,
@@ -131,6 +141,25 @@ async function cargarEncuestas() {
     mensaje.value = 'No se pudieron cargar las encuestas.';
   } finally {
     cargando.value = false;
+  }
+}
+
+async function manejarDuplicacion(encuestaId: number) {
+  if (!usuario) {
+    return;
+  }
+
+  try {
+    procesandoId.value = encuestaId;
+    const respuesta = await duplicarEncuesta(encuestaId, usuario.id);
+    tipoMensaje.value = 'success';
+    mensaje.value = respuesta.message;
+    await cargarEncuestas();
+  } catch (error: any) {
+    tipoMensaje.value = 'danger';
+    mensaje.value = error.response?.data?.message || 'No se pudo duplicar la encuesta.';
+  } finally {
+    procesandoId.value = null;
   }
 }
 

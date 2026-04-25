@@ -189,11 +189,38 @@ export async function eliminarEncuesta(encuestaId: number, usuarioId: number) {
   return data;
 }
 
+export async function duplicarEncuesta(encuestaId: number, usuarioId: number) {
+  const { data } = await api.post(`/encuestas/${encuestaId}/duplicar`, {
+    usuario_id: usuarioId
+  });
+  return data;
+}
+
 export async function obtenerRespuestasRecibidas(encuestaId: number, usuarioId: number) {
   const { data } = await api.get<RespuestasRecibidasEncuesta>(
     `/encuestas/${encuestaId}/respuestas?usuarioId=${usuarioId}`
   );
   return data;
+}
+
+export async function exportarRespuestasEncuesta(
+  encuestaId: number,
+  usuarioId: number,
+  formato: 'csv' | 'excel'
+) {
+  const extension = formato === 'excel' ? 'xls' : 'csv';
+  const respuesta = await api.get(`/encuestas/${encuestaId}/exportar`, {
+    params: {
+      usuarioId,
+      formato
+    },
+    responseType: 'blob'
+  });
+
+  return {
+    blob: respuesta.data as Blob,
+    nombreArchivo: `respuestas-encuesta-${encuestaId}.${extension}`
+  };
 }
 
 export async function obtenerMisRespuestas(usuarioId: number) {
