@@ -63,6 +63,59 @@ a {
   padding: 32px 20px 48px;
 }
 
+.app-navbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 16px 20px;
+  backdrop-filter: blur(18px);
+  background: rgba(244, 247, 251, 0.88);
+  border-bottom: 1px solid rgba(23, 92, 211, 0.08);
+}
+
+.app-navbar__marca {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.app-navbar__logo {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #162033;
+}
+
+.app-navbar__usuario {
+  margin: 0;
+  color: #5a6475;
+  font-size: 0.92rem;
+}
+
+.app-navbar__enlaces {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.65rem;
+}
+
+.app-navbar__enlace {
+  padding: 0.6rem 0.95rem;
+  border-radius: 999px;
+  color: #425067;
+  font-weight: 600;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.app-navbar__enlace--activa,
+.app-navbar__enlace:hover {
+  background: rgba(23, 92, 211, 0.12);
+  color: #175cd3;
+}
+
 .hero-panel,
 .pagina-encabezado,
 .formulario-panel,
@@ -84,6 +137,12 @@ a {
   gap: 20px;
   align-items: center;
   margin-bottom: 24px;
+}
+
+.pagina-encabezado__acciones {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .hero-panel__etiqueta,
@@ -283,6 +342,7 @@ a {
 }
 
 @media (max-width: 768px) {
+  .app-navbar,
   .hero-panel,
   .pagina-encabezado,
   .tarjeta-encuesta,
@@ -292,6 +352,10 @@ a {
   .bloque-opciones__encabezado {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .app-navbar__enlaces {
+    justify-content: flex-start;
   }
 
   .fila-opcion {

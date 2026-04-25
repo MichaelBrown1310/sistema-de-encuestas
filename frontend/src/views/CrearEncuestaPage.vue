@@ -1,293 +1,283 @@
 <template>
-  <ion-page>
-    <ion-content fullscreen>
-      <div class="pagina-contenedor">
-        <section class="pagina-encabezado">
-          <div>
-            <p class="pagina-encabezado__etiqueta">Creacion</p>
-            <h1 class="pagina-encabezado__titulo">Crear encuesta</h1>
-            <p class="pagina-encabezado__texto">
-              Diseña tu encuesta con portada, secciones progresivas y preguntas configurables.
-            </p>
-          </div>
-        </section>
+  <AppShell>
+    <PageHeader
+      etiqueta="Creacion"
+      titulo="Crear encuesta"
+      descripcion="Disena tu encuesta con portada, secciones progresivas y preguntas configurables."
+    />
 
-        <section class="formulario-panel">
+    <section class="formulario-panel">
+      <ion-list lines="none">
+        <ion-item>
+          <ion-input
+            v-model="formulario.titulo"
+            label="Titulo"
+            label-placement="stacked"
+            placeholder="Ejemplo: Habitos de estudio"
+          />
+        </ion-item>
+
+        <ion-item>
+          <ion-textarea
+            v-model="formulario.descripcion"
+            label="Descripcion"
+            label-placement="stacked"
+            placeholder="Cuenta de que trata la encuesta"
+            :auto-grow="true"
+          />
+        </ion-item>
+
+        <ion-item>
+          <ion-input
+            v-model="formulario.categoria"
+            label="Categoria"
+            label-placement="stacked"
+            placeholder="Educacion, tecnologia, salud..."
+          />
+        </ion-item>
+
+        <ion-item>
+          <ion-select v-model="formulario.estado" label="Estado" label-placement="stacked">
+            <ion-select-option value="borrador">Borrador</ion-select-option>
+            <ion-select-option value="publicada">Publicada</ion-select-option>
+          </ion-select>
+        </ion-item>
+
+        <ion-item>
+          <ion-textarea
+            v-model="formulario.mensaje_confirmacion"
+            label="Mensaje de confirmacion"
+            label-placement="stacked"
+            placeholder="Gracias por responder esta encuesta."
+            :auto-grow="true"
+          />
+        </ion-item>
+      </ion-list>
+
+      <div class="campo-archivo">
+        <label class="campo-archivo__label" for="imagen-portada">
+          Imagen de portada
+        </label>
+        <input
+          id="imagen-portada"
+          accept="image/*"
+          class="campo-archivo__input"
+          type="file"
+          @change="manejarCambioImagenPortada"
+        />
+        <button
+          v-if="formulario.imagen_portada"
+          class="campo-archivo__accion"
+          type="button"
+          @click="formulario.imagen_portada = null"
+        >
+          Quitar imagen
+        </button>
+      </div>
+
+      <img
+        v-if="formulario.imagen_portada"
+        :src="formulario.imagen_portada"
+        alt="Vista previa de la portada"
+        class="vista-previa-imagen"
+      />
+    </section>
+
+    <section class="seccion-panel">
+      <div class="seccion-panel__encabezado">
+        <div>
+          <p class="seccion-panel__etiqueta">Secciones</p>
+          <h2 class="seccion-panel__titulo">Constructor de formulario</h2>
+        </div>
+
+        <ion-button fill="outline" @click="agregarSeccion">
+          Agregar seccion
+        </ion-button>
+      </div>
+
+      <div class="lista-secciones">
+        <article
+          v-for="(seccion, indiceSeccion) in formulario.secciones"
+          :key="seccion.id_temporal"
+          class="bloque-seccion"
+        >
+          <div class="bloque-seccion__encabezado">
+            <div>
+              <p class="bloque-seccion__indice">Seccion {{ indiceSeccion + 1 }}</p>
+              <h3>{{ seccion.titulo || `Seccion ${indiceSeccion + 1}` }}</h3>
+            </div>
+
+            <ion-button
+              color="danger"
+              fill="clear"
+              :disabled="formulario.secciones.length === 1"
+              @click="eliminarSeccion(indiceSeccion)"
+            >
+              Eliminar seccion
+            </ion-button>
+          </div>
+
           <ion-list lines="none">
             <ion-item>
               <ion-input
-                v-model="formulario.titulo"
-                label="Titulo"
+                v-model="seccion.titulo"
+                label="Titulo de la seccion"
                 label-placement="stacked"
-                placeholder="Ejemplo: Habitos de estudio"
+                placeholder="Ejemplo: Datos generales"
               />
             </ion-item>
 
             <ion-item>
               <ion-textarea
-                v-model="formulario.descripcion"
-                label="Descripcion"
+                v-model="seccion.descripcion"
+                label="Descripcion de la seccion"
                 label-placement="stacked"
-                placeholder="Cuenta de que trata la encuesta"
-                :auto-grow="true"
-              />
-            </ion-item>
-
-            <ion-item>
-              <ion-input
-                v-model="formulario.categoria"
-                label="Categoria"
-                label-placement="stacked"
-                placeholder="Educacion, tecnologia, salud..."
-              />
-            </ion-item>
-
-            <ion-item>
-              <ion-select v-model="formulario.estado" label="Estado" label-placement="stacked">
-                <ion-select-option value="borrador">Borrador</ion-select-option>
-                <ion-select-option value="publicada">Publicada</ion-select-option>
-              </ion-select>
-            </ion-item>
-
-            <ion-item>
-              <ion-textarea
-                v-model="formulario.mensaje_confirmacion"
-                label="Mensaje de confirmacion"
-                label-placement="stacked"
-                placeholder="Gracias por responder esta encuesta."
+                placeholder="Instrucciones breves para esta seccion"
                 :auto-grow="true"
               />
             </ion-item>
           </ion-list>
 
-          <div class="campo-archivo">
-            <label class="campo-archivo__label" for="imagen-portada">
-              Imagen de portada
-            </label>
-            <input
-              id="imagen-portada"
-              accept="image/*"
-              class="campo-archivo__input"
-              type="file"
-              @change="manejarCambioImagenPortada"
-            />
-            <button
-              v-if="formulario.imagen_portada"
-              class="campo-archivo__accion"
-              type="button"
-              @click="formulario.imagen_portada = null"
-            >
-              Quitar imagen
-            </button>
-          </div>
-
-          <img
-            v-if="formulario.imagen_portada"
-            :src="formulario.imagen_portada"
-            alt="Vista previa de la portada"
-            class="vista-previa-imagen"
-          />
-        </section>
-
-        <section class="seccion-panel">
-          <div class="seccion-panel__encabezado">
-            <div>
-              <p class="seccion-panel__etiqueta">Secciones</p>
-              <h2 class="seccion-panel__titulo">Constructor de formulario</h2>
-            </div>
-
-            <ion-button fill="outline" @click="agregarSeccion">
-              Agregar seccion
+          <div class="bloque-seccion__acciones">
+            <ion-button fill="outline" @click="agregarPregunta(indiceSeccion)">
+              Agregar pregunta
             </ion-button>
           </div>
 
-          <div class="lista-secciones">
+          <div class="lista-preguntas">
             <article
-              v-for="(seccion, indiceSeccion) in formulario.secciones"
-              :key="seccion.id_temporal"
-              class="bloque-seccion"
+              v-for="(pregunta, indicePregunta) in seccion.preguntas"
+              :key="pregunta.id_temporal"
+              class="bloque-pregunta"
+              draggable="true"
+              @dragstart="iniciarArrastre(seccion.id_temporal, pregunta.id_temporal)"
+              @dragover.prevent
+              @drop="soltarPregunta(seccion.id_temporal, indicePregunta)"
             >
-              <div class="bloque-seccion__encabezado">
+              <div class="bloque-pregunta__encabezado">
                 <div>
-                  <p class="bloque-seccion__indice">Seccion {{ indiceSeccion + 1 }}</p>
-                  <h3>{{ seccion.titulo || `Seccion ${indiceSeccion + 1}` }}</h3>
+                  <p class="bloque-pregunta__drag">Arrastra para reordenar</p>
+                  <h3>Pregunta {{ indicePregunta + 1 }}</h3>
                 </div>
-
                 <ion-button
                   color="danger"
                   fill="clear"
-                  :disabled="formulario.secciones.length === 1"
-                  @click="eliminarSeccion(indiceSeccion)"
+                  @click="eliminarPregunta(indiceSeccion, indicePregunta)"
                 >
-                  Eliminar seccion
+                  Eliminar
                 </ion-button>
               </div>
 
               <ion-list lines="none">
                 <ion-item>
                   <ion-input
-                    v-model="seccion.titulo"
-                    label="Titulo de la seccion"
+                    v-model="pregunta.enunciado"
+                    label="Enunciado"
                     label-placement="stacked"
-                    placeholder="Ejemplo: Datos generales"
+                    placeholder="Escribe tu pregunta"
                   />
                 </ion-item>
 
                 <ion-item>
-                  <ion-textarea
-                    v-model="seccion.descripcion"
-                    label="Descripcion de la seccion"
+                  <ion-select
+                    v-model="pregunta.tipo"
+                    label="Tipo de pregunta"
                     label-placement="stacked"
-                    placeholder="Instrucciones breves para esta seccion"
-                    :auto-grow="true"
-                  />
+                    @ionChange="cambiarTipoPregunta(indiceSeccion, indicePregunta)"
+                  >
+                    <ion-select-option value="texto">Texto libre</ion-select-option>
+                    <ion-select-option value="opcion_unica">Opcion unica</ion-select-option>
+                    <ion-select-option value="opcion_multiple">Opcion multiple</ion-select-option>
+                  </ion-select>
                 </ion-item>
               </ion-list>
 
-              <div class="bloque-seccion__acciones">
-                <ion-button fill="outline" @click="agregarPregunta(indiceSeccion)">
-                  Agregar pregunta
-                </ion-button>
-              </div>
+              <label class="alternador-obligatoria">
+                <input v-model="pregunta.es_obligatoria" type="checkbox" />
+                <span>Respuesta obligatoria</span>
+              </label>
 
-              <div class="lista-preguntas">
-                <article
-                  v-for="(pregunta, indicePregunta) in seccion.preguntas"
-                  :key="pregunta.id_temporal"
-                  class="bloque-pregunta"
-                  draggable="true"
-                  @dragstart="iniciarArrastre(seccion.id_temporal, pregunta.id_temporal)"
-                  @dragover.prevent
-                  @drop="soltarPregunta(seccion.id_temporal, indicePregunta)"
+              <div class="campo-archivo">
+                <label class="campo-archivo__label" :for="`imagen-pregunta-${pregunta.id_temporal}`">
+                  Imagen de apoyo para la pregunta
+                </label>
+                <input
+                  :id="`imagen-pregunta-${pregunta.id_temporal}`"
+                  accept="image/*"
+                  class="campo-archivo__input"
+                  type="file"
+                  @change="manejarCambioImagenPregunta($event, indiceSeccion, indicePregunta)"
+                />
+                <button
+                  v-if="pregunta.imagen"
+                  class="campo-archivo__accion"
+                  type="button"
+                  @click="pregunta.imagen = null"
                 >
-                  <div class="bloque-pregunta__encabezado">
-                    <div>
-                      <p class="bloque-pregunta__drag">Arrastra para reordenar</p>
-                      <h3>Pregunta {{ indicePregunta + 1 }}</h3>
-                    </div>
-                    <ion-button
-                      color="danger"
-                      fill="clear"
-                      @click="eliminarPregunta(indiceSeccion, indicePregunta)"
-                    >
-                      Eliminar
-                    </ion-button>
-                  </div>
-
-                  <ion-list lines="none">
-                    <ion-item>
-                      <ion-input
-                        v-model="pregunta.enunciado"
-                        label="Enunciado"
-                        label-placement="stacked"
-                        placeholder="Escribe tu pregunta"
-                      />
-                    </ion-item>
-
-                    <ion-item>
-                      <ion-select
-                        v-model="pregunta.tipo"
-                        label="Tipo de pregunta"
-                        label-placement="stacked"
-                        @ionChange="cambiarTipoPregunta(indiceSeccion, indicePregunta)"
-                      >
-                        <ion-select-option value="texto">Texto libre</ion-select-option>
-                        <ion-select-option value="opcion_unica">Opcion unica</ion-select-option>
-                        <ion-select-option value="opcion_multiple">Opcion multiple</ion-select-option>
-                      </ion-select>
-                    </ion-item>
-                  </ion-list>
-
-                  <label class="alternador-obligatoria">
-                    <input v-model="pregunta.es_obligatoria" type="checkbox" />
-                    <span>Respuesta obligatoria</span>
-                  </label>
-
-                  <div class="campo-archivo">
-                    <label class="campo-archivo__label" :for="`imagen-pregunta-${pregunta.id_temporal}`">
-                      Imagen de apoyo para la pregunta
-                    </label>
-                    <input
-                      :id="`imagen-pregunta-${pregunta.id_temporal}`"
-                      accept="image/*"
-                      class="campo-archivo__input"
-                      type="file"
-                      @change="manejarCambioImagenPregunta($event, indiceSeccion, indicePregunta)"
-                    />
-                    <button
-                      v-if="pregunta.imagen"
-                      class="campo-archivo__accion"
-                      type="button"
-                      @click="pregunta.imagen = null"
-                    >
-                      Quitar imagen
-                    </button>
-                  </div>
-
-                  <img
-                    v-if="pregunta.imagen"
-                    :src="pregunta.imagen"
-                    alt="Vista previa de la pregunta"
-                    class="vista-previa-imagen vista-previa-imagen--pregunta"
-                  />
-
-                  <div v-if="pregunta.tipo !== 'texto'" class="bloque-opciones">
-                    <div class="bloque-opciones__encabezado">
-                      <p>Opciones de respuesta</p>
-                      <ion-button fill="clear" @click="agregarOpcion(indiceSeccion, indicePregunta)">
-                        Agregar opcion
-                      </ion-button>
-                    </div>
-
-                    <div
-                      v-for="(opcion, indiceOpcion) in pregunta.opciones"
-                      :key="opcion.id_temporal"
-                      class="fila-opcion"
-                    >
-                      <ion-input v-model="opcion.texto" placeholder="Texto de la opcion" />
-                      <ion-button
-                        color="danger"
-                        fill="clear"
-                        @click="eliminarOpcion(indiceSeccion, indicePregunta, indiceOpcion)"
-                      >
-                        Quitar
-                      </ion-button>
-                    </div>
-                  </div>
-                </article>
+                  Quitar imagen
+                </button>
               </div>
 
-              <div
-                class="zona-soltar"
-                @dragover.prevent
-                @drop="soltarPreguntaAlFinal(seccion.id_temporal)"
-              >
-                Suelta aqui para mover la pregunta al final de esta seccion.
+              <img
+                v-if="pregunta.imagen"
+                :src="pregunta.imagen"
+                alt="Vista previa de la pregunta"
+                class="vista-previa-imagen vista-previa-imagen--pregunta"
+              />
+
+              <div v-if="pregunta.tipo !== 'texto'" class="bloque-opciones">
+                <div class="bloque-opciones__encabezado">
+                  <p>Opciones de respuesta</p>
+                  <ion-button fill="clear" @click="agregarOpcion(indiceSeccion, indicePregunta)">
+                    Agregar opcion
+                  </ion-button>
+                </div>
+
+                <div
+                  v-for="(opcion, indiceOpcion) in pregunta.opciones"
+                  :key="opcion.id_temporal"
+                  class="fila-opcion"
+                >
+                  <ion-input v-model="opcion.texto" placeholder="Texto de la opcion" />
+                  <ion-button
+                    color="danger"
+                    fill="clear"
+                    @click="eliminarOpcion(indiceSeccion, indicePregunta, indiceOpcion)"
+                  >
+                    Quitar
+                  </ion-button>
+                </div>
               </div>
             </article>
           </div>
 
-          <ion-button expand="block" :disabled="guardando" @click="guardarEncuesta">
-            {{ guardando ? 'Guardando...' : 'Guardar encuesta' }}
-          </ion-button>
-
-          <ion-text v-if="mensaje" :color="tipoMensaje">
-            <p>{{ mensaje }}</p>
-          </ion-text>
-        </section>
+          <div
+            class="zona-soltar"
+            @dragover.prevent
+            @drop="soltarPreguntaAlFinal(seccion.id_temporal)"
+          >
+            Suelta aqui para mover la pregunta al final de esta seccion.
+          </div>
+        </article>
       </div>
-    </ion-content>
-  </ion-page>
+
+      <ion-button expand="block" :disabled="guardando" @click="guardarEncuesta">
+        {{ guardando ? 'Guardando...' : 'Guardar encuesta' }}
+      </ion-button>
+
+      <ion-text v-if="mensaje" :color="tipoMensaje">
+        <p>{{ mensaje }}</p>
+      </ion-text>
+    </section>
+  </AppShell>
 </template>
 
 <script setup lang="ts">
 import {
   IonButton,
-  IonContent,
   IonInput,
   IonItem,
   IonList,
-  IonPage,
   IonSelect,
   IonSelectOption,
   IonText,
@@ -295,6 +285,8 @@ import {
 } from '@ionic/vue';
 import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import AppShell from '../components/AppShell.vue';
+import PageHeader from '../components/PageHeader.vue';
 import { obtenerUsuarioAutenticado } from '../services/auth';
 import { crearEncuesta, type PreguntaEncuesta } from '../services/encuestas';
 

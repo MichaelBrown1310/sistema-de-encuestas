@@ -1,48 +1,39 @@
 <template>
-  <ion-page>
-    <ion-content fullscreen>
-      <div class="pagina-contenedor">
-        <section class="pagina-encabezado">
-          <div>
-            <p class="pagina-encabezado__etiqueta">Gestion</p>
-            <h1 class="pagina-encabezado__titulo">Mis encuestas</h1>
-            <p class="pagina-encabezado__texto">
-              Aqui veras las encuestas que has creado y su estado actual.
-            </p>
-          </div>
-          <div>
-            <ion-button router-link="/home">Volver a la principal</ion-button>
-          <ion-button router-link="/encuestas/crear">Nueva encuesta</ion-button>
+  <AppShell>
+    <PageHeader
+      etiqueta="Gestion"
+      titulo="Mis encuestas"
+      descripcion="Aqui veras las encuestas que has creado y su estado actual."
+    >
+      <template #actions>
+        <ion-button router-link="/encuestas/crear">Nueva encuesta</ion-button>
+      </template>
+    </PageHeader>
 
-          </div>
-          
-        </section>
+    <div v-if="cargando" class="estado-vacio">Cargando encuestas...</div>
+    <div v-else-if="encuestas.length === 0" class="estado-vacio">
+      Aun no tienes encuestas creadas.
+    </div>
 
-        <div v-if="cargando" class="estado-vacio">Cargando encuestas...</div>
-        <div v-else-if="encuestas.length === 0" class="estado-vacio">
-          Aun no tienes encuestas creadas.
-        </div>
-
-        <div v-else class="lista-panel">
-          <article v-for="encuesta in encuestas" :key="encuesta.id" class="tarjeta-encuesta">
-            <div>
-              <p class="tarjeta-encuesta__estado">{{ encuesta.estado }}</p>
-              <h3 class="tarjeta-encuesta__titulo">{{ encuesta.titulo }}</h3>
-              <p class="tarjeta-encuesta__descripcion">{{ encuesta.descripcion }}</p>
-            </div>
-            <p class="tarjeta-encuesta__fecha">
-              {{ encuesta.categoria }} | {{ formatearFecha(encuesta.fecha_creacion) }}
-            </p>
-          </article>
-        </div>
-      </div>
-    </ion-content>
-  </ion-page>
+    <div v-else class="lista-panel">
+      <SurveyCard
+        v-for="encuesta in encuestas"
+        :key="encuesta.id"
+        :estado="encuesta.estado"
+        :titulo="encuesta.titulo"
+        :descripcion="encuesta.descripcion"
+        :detalle="`${encuesta.categoria} | ${formatearFecha(encuesta.fecha_creacion)}`"
+      />
+    </div>
+  </AppShell>
 </template>
 
 <script setup lang="ts">
-import { IonButton, IonContent, IonPage, onIonViewWillEnter } from '@ionic/vue';
+import { IonButton, onIonViewWillEnter } from '@ionic/vue';
 import { ref } from 'vue';
+import AppShell from '../components/AppShell.vue';
+import PageHeader from '../components/PageHeader.vue';
+import SurveyCard from '../components/SurveyCard.vue';
 import { obtenerUsuarioAutenticado } from '../services/auth';
 import { obtenerEncuestasUsuario, type Encuesta } from '../services/encuestas';
 

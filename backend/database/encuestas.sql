@@ -17,22 +17,41 @@ CREATE TABLE IF NOT EXISTS encuestas (
   usuario_id INT UNSIGNED NOT NULL,
   titulo VARCHAR(180) NOT NULL,
   descripcion TEXT NOT NULL,
+  imagen_portada LONGTEXT NULL,
   categoria VARCHAR(120) NOT NULL,
   estado ENUM('borrador', 'publicada') NOT NULL DEFAULT 'borrador',
+  mensaje_confirmacion TEXT NOT NULL DEFAULT ('Tu respuesta ha sido enviada correctamente.'),
   fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_encuestas_usuario
     FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
     ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS secciones (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  encuesta_id INT UNSIGNED NOT NULL,
+  titulo VARCHAR(180) NOT NULL,
+  descripcion TEXT NULL,
+  orden INT UNSIGNED NOT NULL DEFAULT 1,
+  CONSTRAINT fk_secciones_encuesta
+    FOREIGN KEY (encuesta_id) REFERENCES encuestas(id)
+    ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS preguntas (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   encuesta_id INT UNSIGNED NOT NULL,
+  seccion_id INT UNSIGNED NOT NULL,
   enunciado VARCHAR(255) NOT NULL,
+  imagen LONGTEXT NULL,
   tipo ENUM('texto', 'opcion_unica', 'opcion_multiple') NOT NULL DEFAULT 'texto',
+  es_obligatoria TINYINT(1) NOT NULL DEFAULT 1,
   orden INT UNSIGNED NOT NULL DEFAULT 1,
   CONSTRAINT fk_preguntas_encuesta
     FOREIGN KEY (encuesta_id) REFERENCES encuestas(id)
+    ON DELETE CASCADE,
+  CONSTRAINT fk_preguntas_seccion
+    FOREIGN KEY (seccion_id) REFERENCES secciones(id)
     ON DELETE CASCADE
 );
 

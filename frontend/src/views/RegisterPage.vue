@@ -1,59 +1,53 @@
 <template>
   <ion-page>
     <ion-content class="autenticacion-contenido" fullscreen>
-      <div class="autenticacion-contenedor">
-        <ion-card class="autenticacion-tarjeta">
-          <ion-card-content>
-            <h1 class="autenticacion-titulo">Crear cuenta</h1>
-            <p class="autenticacion-subtitulo">Registra nombre, correo y contrasena.</p>
+      <AuthCard
+        titulo="Crear cuenta"
+        subtitulo="Registra nombre, correo y contrasena."
+        textoEnlace="Ya tienes cuenta?"
+        etiquetaEnlace="Inicia sesion"
+        rutaEnlace="/login"
+      >
+        <ion-list lines="none">
+          <ion-item>
+            <ion-input
+              v-model="formulario.nombre"
+              label="Nombre"
+              label-placement="stacked"
+              type="text"
+              placeholder="Tu nombre"
+            />
+          </ion-item>
 
-            <ion-list lines="none">
-              <ion-item>
-                <ion-input
-                  v-model="formulario.nombre"
-                  label="Nombre"
-                  label-placement="stacked"
-                  type="text"
-                  placeholder="Tu nombre"
-                />
-              </ion-item>
+          <ion-item>
+            <ion-input
+              v-model="formulario.correo"
+              label="Correo"
+              label-placement="stacked"
+              type="email"
+              placeholder="correo@ejemplo.com"
+            />
+          </ion-item>
 
-              <ion-item>
-                <ion-input
-                  v-model="formulario.correo"
-                  label="Correo"
-                  label-placement="stacked"
-                  type="email"
-                  placeholder="correo@ejemplo.com"
-                />
-              </ion-item>
+          <ion-item>
+            <ion-input
+              v-model="formulario.password"
+              label="Contrasena"
+              label-placement="stacked"
+              type="password"
+              placeholder="********"
+            />
+          </ion-item>
+        </ion-list>
 
-              <ion-item>
-                <ion-input
-                  v-model="formulario.password"
-                  label="Contrasena"
-                  label-placement="stacked"
-                  type="password"
-                  placeholder="********"
-                />
-              </ion-item>
-            </ion-list>
+        <ion-button expand="block" :disabled="cargando" @click="manejarRegistro">
+          {{ cargando ? 'Registrando...' : 'Crear cuenta' }}
+        </ion-button>
 
-            <ion-button expand="block" :disabled="cargando" @click="manejarRegistro">
-              {{ cargando ? 'Registrando...' : 'Crear cuenta' }}
-            </ion-button>
-
-            <ion-text v-if="mensaje" :color="tipoMensaje">
-              <p>{{ mensaje }}</p>
-            </ion-text>
-
-            <p class="autenticacion-enlace">
-              Ya tienes cuenta?
-              <router-link to="/login">Inicia sesion</router-link>
-            </p>
-          </ion-card-content>
-        </ion-card>
-      </div>
+        <ion-text v-if="mensaje" :color="tipoMensaje">
+          <p>{{ mensaje }}</p>
+        </ion-text>
+      </AuthCard>
     </ion-content>
   </ion-page>
 </template>
@@ -61,8 +55,6 @@
 <script setup lang="ts">
 import {
   IonButton,
-  IonCard,
-  IonCardContent,
   IonContent,
   IonInput,
   IonItem,
@@ -71,6 +63,7 @@ import {
   IonText
 } from '@ionic/vue';
 import { reactive, ref } from 'vue';
+import AuthCard from '../components/AuthCard.vue';
 import { registrarUsuario } from '../services/auth';
 
 const formulario = reactive({

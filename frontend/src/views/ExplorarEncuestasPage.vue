@@ -1,50 +1,39 @@
 <template>
-  <ion-page>
-    <ion-content fullscreen>
-      <div class="pagina-contenedor">
-        <section class="pagina-encabezado">
-          
-          <div>
-            
-            <p class="pagina-encabezado__etiqueta">Descubrir</p>
-            <h1 class="pagina-encabezado__titulo">Explorar encuestas</h1>
-            <p class="pagina-encabezado__texto">
-              Estas son algunas encuestas publicadas disponibles para responder.
-            </p>
-          </div>
-          <ion-button router-link="/home">Volver a la principal</ion-button>
-        </section>
+  <AppShell>
+    <PageHeader
+      etiqueta="Descubrir"
+      titulo="Explorar encuestas"
+      descripcion="Estas son algunas encuestas publicadas disponibles para responder."
+    />
 
-        <div v-if="cargando" class="estado-vacio">Buscando encuestas publicadas...</div>
-        <div v-else-if="encuestas.length === 0" class="estado-vacio">
-          No hay encuestas publicadas por el momento.
-        </div>
+    <div v-if="cargando" class="estado-vacio">Buscando encuestas publicadas...</div>
+    <div v-else-if="encuestas.length === 0" class="estado-vacio">
+      No hay encuestas publicadas por el momento.
+    </div>
 
-        <div v-else class="lista-panel">
-          <article v-for="encuesta in encuestas" :key="encuesta.id" class="tarjeta-encuesta">
-            <div>
-              <p class="tarjeta-encuesta__estado">Publicada</p>
-              <h3 class="tarjeta-encuesta__titulo">{{ encuesta.titulo }}</h3>
-              <p class="tarjeta-encuesta__descripcion">{{ encuesta.descripcion }}</p>
-            </div>
-            <div class="tarjeta-encuesta__acciones">
-              <p class="tarjeta-encuesta__fecha">
-                {{ encuesta.categoria }} | {{ encuesta.nombre_creador }}
-              </p>
-              <ion-button :router-link="`/encuestas/${encuesta.id}/responder`">
-                Responder
-              </ion-button>
-            </div>
-          </article>
-        </div>
-      </div>
-    </ion-content>
-  </ion-page>
+    <div v-else class="lista-panel">
+      <SurveyCard
+        v-for="encuesta in encuestas"
+        :key="encuesta.id"
+        estado="Publicada"
+        :titulo="encuesta.titulo"
+        :descripcion="encuesta.descripcion"
+        :detalle="`${encuesta.categoria} | ${encuesta.nombre_creador}`"
+      >
+        <template #actions>
+          <ion-button :router-link="`/encuestas/${encuesta.id}/responder`">Responder</ion-button>
+        </template>
+      </SurveyCard>
+    </div>
+  </AppShell>
 </template>
 
 <script setup lang="ts">
-import { IonButton, IonContent, IonPage, onIonViewWillEnter } from '@ionic/vue';
+import { IonButton, onIonViewWillEnter } from '@ionic/vue';
 import { ref } from 'vue';
+import AppShell from '../components/AppShell.vue';
+import PageHeader from '../components/PageHeader.vue';
+import SurveyCard from '../components/SurveyCard.vue';
 import { obtenerEncuestasPublicadas, type EncuestaPublica } from '../services/encuestas';
 
 const cargando = ref(false);

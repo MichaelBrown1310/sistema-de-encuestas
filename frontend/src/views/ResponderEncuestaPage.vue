@@ -1,167 +1,154 @@
 <template>
-  <ion-page>
-    <ion-content fullscreen>
-      <div class="pagina-contenedor">
-        <section class="pagina-encabezado" v-if="encuesta">
-          <div>
-            <p class="pagina-encabezado__etiqueta">Responder</p>
-            <h1 class="pagina-encabezado__titulo">{{ encuesta.titulo }}</h1>
-            <p class="pagina-encabezado__texto">{{ encuesta.descripcion }}</p>
-            <p class="subdetalle-encuesta">
-              {{ encuesta.categoria }} · Creada por {{ encuesta.nombre_creador }}
-            </p>
-          </div>
-        </section>
+  <AppShell>
+    <PageHeader
+      v-if="encuesta"
+      etiqueta="Responder"
+      :titulo="encuesta.titulo"
+      :descripcion="encuesta.descripcion"
+      :detalle="`${encuesta.categoria} | Creada por ${encuesta.nombre_creador}`"
+    />
 
-        <img
-          v-if="encuesta?.imagen_portada"
-          :src="encuesta.imagen_portada"
-          alt="Portada de la encuesta"
-          class="encuesta-portada"
-        />
+    <img
+      v-if="encuesta?.imagen_portada"
+      :src="encuesta.imagen_portada"
+      alt="Portada de la encuesta"
+      class="encuesta-portada"
+    />
 
-        <div v-if="cargando" class="estado-vacio">Cargando encuesta...</div>
+    <div v-if="cargando" class="estado-vacio">Cargando encuesta...</div>
 
-        <section v-else-if="encuesta && enviada" class="seccion-panel panel-confirmacion">
-          <p class="panel-confirmacion__etiqueta">Encuesta enviada</p>
-          <h2>{{ encuesta.titulo }}</h2>
-          <p>{{ mensajeConfirmacionMostrado }}</p>
-          <ion-button router-link="/encuestas/explorar">Volver a explorar</ion-button>
-        </section>
+    <section v-else-if="encuesta && enviada" class="seccion-panel panel-confirmacion">
+      <p class="panel-confirmacion__etiqueta">Encuesta enviada</p>
+      <h2>{{ encuesta.titulo }}</h2>
+      <p>{{ mensajeConfirmacionMostrado }}</p>
+      <ion-button router-link="/encuestas/explorar">Volver a explorar</ion-button>
+    </section>
 
-        <section v-else-if="encuesta && seccionActual" class="seccion-panel">
-          <div class="secciones-progreso">
-            <div
-              v-for="(seccion, indice) in encuesta.secciones"
-              :key="seccion.id"
-              class="secciones-progreso__item"
-              :class="{
-                'secciones-progreso__item--activa': indice === indiceSeccionActual,
-                'secciones-progreso__item--completa': indice < indiceSeccionActual
-              }"
-            >
-              <span>{{ indice + 1 }}</span>
-              <strong>{{ seccion.titulo }}</strong>
-            </div>
-          </div>
-
-          <div class="seccion-actual">
-            <p class="seccion-actual__indice">
-              Seccion {{ indiceSeccionActual + 1 }} de {{ encuesta.secciones.length }}
-            </p>
-            <h2 class="seccion-panel__titulo">{{ seccionActual.titulo }}</h2>
-            <p v-if="seccionActual.descripcion" class="seccion-actual__descripcion">
-              {{ seccionActual.descripcion }}
-            </p>
-          </div>
-
-          <div class="lista-panel">
-            <article
-              v-for="(pregunta, indicePregunta) in seccionActual.preguntas"
-              :key="pregunta.id"
-              class="bloque-pregunta"
-            >
-              <div class="bloque-pregunta__titulo">
-                <h3>Pregunta {{ indicePregunta + 1 }}</h3>
-                <span :class="pregunta.es_obligatoria ? 'estado-obligatoria' : 'estado-opcional'">
-                  {{ pregunta.es_obligatoria ? 'Obligatoria' : 'Opcional' }}
-                </span>
-              </div>
-
-              <p class="bloque-pregunta__texto">{{ pregunta.enunciado }}</p>
-
-              <img
-                v-if="pregunta.imagen"
-                :src="pregunta.imagen"
-                alt="Imagen de apoyo de la pregunta"
-                class="pregunta-imagen"
-              />
-
-              <div v-if="pregunta.tipo === 'texto'">
-                <ion-item>
-                  <ion-textarea
-                    v-model="respuestasTexto[pregunta.id!]"
-                    label="Tu respuesta"
-                    label-placement="stacked"
-                    :auto-grow="true"
-                  />
-                </ion-item>
-              </div>
-
-              <div v-else-if="pregunta.tipo === 'opcion_unica'" class="grupo-opciones">
-                <label
-                  v-for="opcion in pregunta.opciones"
-                  :key="opcion.id"
-                  class="opcion-respuesta"
-                >
-                  <input
-                    v-model="respuestasUnicas[pregunta.id!]"
-                    type="radio"
-                    :name="`pregunta-${pregunta.id}`"
-                    :value="opcion.id"
-                  />
-                  <span>{{ opcion.texto }}</span>
-                </label>
-              </div>
-
-              <div v-else class="grupo-opciones">
-                <label
-                  v-for="opcion in pregunta.opciones"
-                  :key="opcion.id"
-                  class="opcion-respuesta"
-                >
-                  <input
-                    type="checkbox"
-                    :checked="opcionSeleccionada(pregunta.id!, opcion.id!)"
-                    @change="alternarOpcionMultiple(pregunta.id!, opcion.id!)"
-                  />
-                  <span>{{ opcion.texto }}</span>
-                </label>
-              </div>
-            </article>
-          </div>
-
-          <ion-text v-if="mensaje" :color="tipoMensaje">
-            <p>{{ mensaje }}</p>
-          </ion-text>
-
-          <div class="acciones-seccion">
-            <ion-button
-              fill="outline"
-              :disabled="indiceSeccionActual === 0 || enviando"
-              @click="irASeccionAnterior"
-            >
-              Seccion anterior
-            </ion-button>
-
-            <ion-button v-if="!esUltimaSeccion" :disabled="enviando" @click="irASiguienteSeccion">
-              Siguiente seccion
-            </ion-button>
-
-            <ion-button v-else :disabled="enviando" @click="enviarFormulario">
-              {{ enviando ? 'Enviando...' : 'Enviar respuestas' }}
-            </ion-button>
-          </div>
-        </section>
-
-        <div v-else class="estado-vacio">No se encontro la encuesta solicitada.</div>
+    <section v-else-if="encuesta && seccionActual" class="seccion-panel">
+      <div class="secciones-progreso">
+        <div
+          v-for="(seccion, indice) in encuesta.secciones"
+          :key="seccion.id"
+          class="secciones-progreso__item"
+          :class="{
+            'secciones-progreso__item--activa': indice === indiceSeccionActual,
+            'secciones-progreso__item--completa': indice < indiceSeccionActual
+          }"
+        >
+          <span>{{ indice + 1 }}</span>
+          <strong>{{ seccion.titulo }}</strong>
+        </div>
       </div>
-    </ion-content>
-  </ion-page>
+
+      <div class="seccion-actual">
+        <p class="seccion-actual__indice">
+          Seccion {{ indiceSeccionActual + 1 }} de {{ encuesta.secciones.length }}
+        </p>
+        <h2 class="seccion-panel__titulo">{{ seccionActual.titulo }}</h2>
+        <p v-if="seccionActual.descripcion" class="seccion-actual__descripcion">
+          {{ seccionActual.descripcion }}
+        </p>
+      </div>
+
+      <div class="lista-panel">
+        <article
+          v-for="(pregunta, indicePregunta) in seccionActual.preguntas"
+          :key="pregunta.id"
+          class="bloque-pregunta"
+        >
+          <div class="bloque-pregunta__titulo">
+            <h3>Pregunta {{ indicePregunta + 1 }}</h3>
+            <span :class="pregunta.es_obligatoria ? 'estado-obligatoria' : 'estado-opcional'">
+              {{ pregunta.es_obligatoria ? 'Obligatoria' : 'Opcional' }}
+            </span>
+          </div>
+
+          <p class="bloque-pregunta__texto">{{ pregunta.enunciado }}</p>
+
+          <img
+            v-if="pregunta.imagen"
+            :src="pregunta.imagen"
+            alt="Imagen de apoyo de la pregunta"
+            class="pregunta-imagen"
+          />
+
+          <div v-if="pregunta.tipo === 'texto'">
+            <ion-item>
+              <ion-textarea
+                v-model="respuestasTexto[pregunta.id!]"
+                label="Tu respuesta"
+                label-placement="stacked"
+                :auto-grow="true"
+              />
+            </ion-item>
+          </div>
+
+          <div v-else-if="pregunta.tipo === 'opcion_unica'" class="grupo-opciones">
+            <label
+              v-for="opcion in pregunta.opciones"
+              :key="opcion.id"
+              class="opcion-respuesta"
+            >
+              <input
+                v-model="respuestasUnicas[pregunta.id!]"
+                type="radio"
+                :name="`pregunta-${pregunta.id}`"
+                :value="opcion.id"
+              />
+              <span>{{ opcion.texto }}</span>
+            </label>
+          </div>
+
+          <div v-else class="grupo-opciones">
+            <label
+              v-for="opcion in pregunta.opciones"
+              :key="opcion.id"
+              class="opcion-respuesta"
+            >
+              <input
+                type="checkbox"
+                :checked="opcionSeleccionada(pregunta.id!, opcion.id!)"
+                @change="alternarOpcionMultiple(pregunta.id!, opcion.id!)"
+              />
+              <span>{{ opcion.texto }}</span>
+            </label>
+          </div>
+        </article>
+      </div>
+
+      <ion-text v-if="mensaje" :color="tipoMensaje">
+        <p>{{ mensaje }}</p>
+      </ion-text>
+
+      <div class="acciones-seccion">
+        <ion-button
+          fill="outline"
+          :disabled="indiceSeccionActual === 0 || enviando"
+          @click="irASeccionAnterior"
+        >
+          Seccion anterior
+        </ion-button>
+
+        <ion-button v-if="!esUltimaSeccion" :disabled="enviando" @click="irASiguienteSeccion">
+          Siguiente seccion
+        </ion-button>
+
+        <ion-button v-else :disabled="enviando" @click="enviarFormulario">
+          {{ enviando ? 'Enviando...' : 'Enviar respuestas' }}
+        </ion-button>
+      </div>
+    </section>
+
+    <div v-else class="estado-vacio">No se encontro la encuesta solicitada.</div>
+  </AppShell>
 </template>
 
 <script setup lang="ts">
-import {
-  IonButton,
-  IonContent,
-  IonItem,
-  IonPage,
-  IonText,
-  IonTextarea,
-  onIonViewWillEnter
-} from '@ionic/vue';
+import { IonButton, IonItem, IonText, IonTextarea, onIonViewWillEnter } from '@ionic/vue';
 import { computed, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
+import AppShell from '../components/AppShell.vue';
+import PageHeader from '../components/PageHeader.vue';
 import { obtenerUsuarioAutenticado } from '../services/auth';
 import {
   enviarRespuestasEncuesta,
