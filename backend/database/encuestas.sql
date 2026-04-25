@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS encuestas (
   estado ENUM('borrador', 'publicada') NOT NULL DEFAULT 'borrador',
   mensaje_confirmacion TEXT NOT NULL DEFAULT ('Tu respuesta ha sido enviada correctamente.'),
   esta_oculta TINYINT(1) NOT NULL DEFAULT 0,
+  respuesta_unica_usuario TINYINT(1) NOT NULL DEFAULT 0,
   fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_encuestas_usuario
     FOREIGN KEY (usuario_id) REFERENCES usuarios(id)

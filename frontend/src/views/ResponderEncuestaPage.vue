@@ -5,7 +5,7 @@
       etiqueta="Responder"
       :titulo="encuesta.titulo"
       :descripcion="encuesta.descripcion"
-      :detalle="`${encuesta.categoria} | Creada por ${encuesta.nombre_creador}`"
+      :detalle="obtenerDetalleEncuesta()"
     />
 
     <img
@@ -182,6 +182,18 @@ const esUltimaSeccion = computed(() => {
 
   return indiceSeccionActual.value === encuesta.value.secciones.length - 1;
 });
+
+function obtenerDetalleEncuesta() {
+  if (!encuesta.value) {
+    return '';
+  }
+
+  const restriccion = encuesta.value.respuesta_unica_usuario
+    ? 'Una sola respuesta por usuario'
+    : 'Multiples respuestas permitidas';
+
+  return `${encuesta.value.categoria} | Creada por ${encuesta.value.nombre_creador} | ${restriccion}`;
+}
 
 function resetearRespuestas() {
   for (const clave of Object.keys(respuestasTexto)) {

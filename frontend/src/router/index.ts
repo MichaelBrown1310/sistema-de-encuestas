@@ -8,6 +8,7 @@ import CrearEncuestaPage from '../views/CrearEncuestaPage.vue';
 import ResponderEncuestaPage from '../views/ResponderEncuestaPage.vue';
 import RespuestasPage from '../views/RespuestasPage.vue';
 import SurveyResponsesPage from '../views/SurveyResponsesPage.vue';
+import MyResponseDetailPage from '../views/MyResponseDetailPage.vue';
 import { obtenerUsuarioAutenticado } from '../services/auth';
 
 const routes = [
@@ -54,6 +55,10 @@ const routes = [
   {
     path: '/respuestas',
     component: RespuestasPage
+  },
+  {
+    path: '/respuestas/:respuestaId',
+    component: MyResponseDetailPage
   }
 ];
 

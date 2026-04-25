@@ -3,9 +3,11 @@ import {
   actualizarEncuestaBorrador,
   crearEncuesta,
   eliminarEncuestaPropia,
+  listarMisRespuestas,
   listarEncuestasPublicadas,
   listarRespuestasRecibidas,
   listarEncuestasUsuario,
+  obtenerMiRespuesta,
   obtenerEncuestaPropia,
   obtenerEncuestaPublicada,
   obtenerResumenUsuario,
@@ -17,6 +19,8 @@ import {
 const router = Router();
 
 router.get('/resumen/:usuarioId', obtenerResumenUsuario);
+router.get('/mis-respuestas', listarMisRespuestas);
+router.get('/mis-respuestas/:respuestaId', obtenerMiRespuesta);
 router.get('/', listarEncuestasUsuario);
 router.get('/publicadas', listarEncuestasPublicadas);
 router.get('/publicadas/:id', obtenerEncuestaPublicada);

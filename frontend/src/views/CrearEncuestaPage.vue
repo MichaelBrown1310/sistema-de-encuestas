@@ -51,6 +51,11 @@
         </ion-item>
       </ion-list>
 
+      <label class="alternador-obligatoria alternador-obligatoria--panel">
+        <input v-model="formulario.respuesta_unica_usuario" type="checkbox" />
+        <span>Permitir solo una respuesta por usuario o correo</span>
+      </label>
+
       <div class="campo-archivo">
         <label class="campo-archivo__label" for="imagen-portada">
           Imagen de portada
@@ -371,6 +376,7 @@ const formulario = reactive({
   categoria: '',
   estado: 'borrador',
   mensaje_confirmacion: 'Tu respuesta ha sido enviada correctamente.',
+  respuesta_unica_usuario: false,
   secciones: [crearSeccionBase()]
 });
 
@@ -388,6 +394,7 @@ function limpiarFormulario() {
   formulario.categoria = '';
   formulario.estado = 'borrador';
   formulario.mensaje_confirmacion = 'Tu respuesta ha sido enviada correctamente.';
+  formulario.respuesta_unica_usuario = false;
   formulario.secciones = [crearSeccionBase()];
 }
 
@@ -399,6 +406,7 @@ function cargarEncuestaEnFormulario(encuesta: EncuestaDetallada) {
   formulario.categoria = encuesta.categoria;
   formulario.estado = 'borrador';
   formulario.mensaje_confirmacion = encuesta.mensaje_confirmacion;
+  formulario.respuesta_unica_usuario = Boolean(encuesta.respuesta_unica_usuario);
   formulario.secciones = encuesta.secciones.map((seccion) => ({
     id_temporal: consecutivoSeccion++,
     titulo: seccion.titulo,
@@ -480,6 +488,21 @@ function leerArchivoComoBase64(archivo: File) {
   });
 }
 
+function validarArchivoImagen(archivo: File, contexto: 'portada' | 'pregunta') {
+  const LIMITE = 1.5 * 1024 * 1024;
+
+  if (archivo.size > LIMITE) {
+    tipoMensaje.value = 'danger';
+    mensaje.value =
+      contexto === 'portada'
+        ? 'La imagen de portada supera el limite de 1.5 MB.'
+        : 'La imagen de la pregunta supera el limite de 1.5 MB.';
+    return false;
+  }
+
+  return true;
+}
+
 async function manejarCambioImagenPortada(evento: Event) {
   const input = evento.target as HTMLInputElement;
   const archivo = input.files?.[0];
@@ -488,7 +511,13 @@ async function manejarCambioImagenPortada(evento: Event) {
     return;
   }
 
+  if (!validarArchivoImagen(archivo, 'portada')) {
+    input.value = '';
+    return;
+  }
+
   formulario.imagen_portada = await leerArchivoComoBase64(archivo);
+  mensaje.value = '';
   input.value = '';
 }
 
@@ -504,8 +533,14 @@ async function manejarCambioImagenPregunta(
     return;
   }
 
+  if (!validarArchivoImagen(archivo, 'pregunta')) {
+    input.value = '';
+    return;
+  }
+
   formulario.secciones[indiceSeccion].preguntas[indicePregunta].imagen =
     await leerArchivoComoBase64(archivo);
+  mensaje.value = '';
   input.value = '';
 }
 
@@ -630,6 +665,7 @@ function construirPayload() {
     categoria: formulario.categoria.trim(),
     estado: 'borrador',
     mensaje_confirmacion: formulario.mensaje_confirmacion.trim(),
+    respuesta_unica_usuario: formulario.respuesta_unica_usuario,
     secciones: formulario.secciones.map((seccion, indiceSeccion) => ({
       titulo: seccion.titulo.trim(),
       descripcion: seccion.descripcion.trim(),
@@ -774,6 +810,10 @@ onIonViewWillEnter(() => {
   gap: 0.65rem;
   margin: 0.75rem 0 0;
   color: #0f172a;
+}
+
+.alternador-obligatoria--panel {
+  margin-top: 0;
 }
 
 .campo-archivo {

@@ -9,21 +9,36 @@ import {
   eliminarEncuesta,
   obtenerDetalleEncuestaPublicada,
   obtenerDetalleEncuestaPorUsuario,
+  obtenerDetalleRespuestaUsuario,
   obtenerEncuestaBase,
+  obtenerEncuestasRespondidasPorUsuario,
   obtenerEncuestasPorUsuario,
   obtenerEncuestasPublicadas,
   obtenerOpcionesPreguntas,
   obtenerPreguntasEncuesta,
   obtenerRespuestasRecibidas,
   obtenerResumenEncuestasPorUsuario
+  ,
+  usuarioYaRespondioEncuesta
 } from '../models/surveyModel.js';
 import {
   esImagenValida,
   mapearEncuestaDetallada,
+  mapearDetalleRespuestaUsuario,
+  mapearEncuestasRespondidas,
   mapearRespuestasRecibidas,
   normalizarTexto,
+  validarPesoImagenes,
   validarSecciones
 } from '../utils/surveyUtils.js';
+
+async function rollbackSeguro(conexion, contexto) {
+  try {
+    await conexion.rollback();
+  } catch (rollbackError) {
+    console.error(`No se pudo revertir la transaccion en ${contexto}:`, rollbackError);
+  }
+}
 
 export async function obtenerResumenUsuario(req, res) {
   const usuarioId = Number(req.params.usuarioId);
@@ -103,6 +118,7 @@ function construirPayloadEncuesta(body) {
     estado: body.estado,
     mensaje_confirmacion:
       normalizarTexto(body.mensaje_confirmacion) || 'Tu respuesta ha sido enviada correctamente.',
+    respuesta_unica_usuario: Boolean(body.respuesta_unica_usuario),
     secciones: body.secciones.map((seccion) => ({
       titulo: normalizarTexto(seccion.titulo),
       descripcion: normalizarTexto(seccion.descripcion) || null,
@@ -142,7 +158,13 @@ function validarDatosEncuesta(body) {
     return 'La imagen de portada no tiene un formato valido.';
   }
 
-  return validarSecciones(secciones);
+  const errorSecciones = validarSecciones(secciones);
+
+  if (errorSecciones) {
+    return errorSecciones;
+  }
+
+  return validarPesoImagenes(imagen_portada, secciones);
 }
 
 export async function crearEncuesta(req, res) {
@@ -162,7 +184,7 @@ export async function crearEncuesta(req, res) {
     await conexion.commit();
     return res.status(201).json({ message: 'Encuesta creada correctamente.', id: encuestaId });
   } catch (error) {
-    await conexion.rollback();
+    await rollbackSeguro(conexion, 'crearEncuesta');
     console.error('Error al crear encuesta:', error);
     return res.status(500).json({ message: 'No se pudo crear la encuesta.' });
   } finally {
@@ -213,12 +235,12 @@ export async function actualizarEncuestaBorrador(req, res) {
     const encuesta = await obtenerEncuestaBase(encuestaId, conexion);
 
     if (!encuesta || encuesta.usuario_id !== usuarioId) {
-      await conexion.rollback();
+      await rollbackSeguro(conexion, 'actualizarEncuestaBorrador');
       return res.status(404).json({ message: 'Encuesta no encontrada.' });
     }
 
     if (encuesta.estado !== 'borrador') {
-      await conexion.rollback();
+      await rollbackSeguro(conexion, 'actualizarEncuestaBorrador');
       return res.status(409).json({ message: 'Solo los borradores se pueden editar.' });
     }
 
@@ -227,7 +249,7 @@ export async function actualizarEncuestaBorrador(req, res) {
 
     return res.json({ message: 'Borrador actualizado correctamente.' });
   } catch (error) {
-    await conexion.rollback();
+    await rollbackSeguro(conexion, 'actualizarEncuestaBorrador');
     console.error('Error al actualizar borrador:', error);
     return res.status(500).json({ message: 'No se pudo actualizar la encuesta.' });
   } finally {
@@ -251,12 +273,12 @@ export async function publicarEncuesta(req, res) {
     const encuesta = await obtenerEncuestaBase(encuestaId, conexion);
 
     if (!encuesta || encuesta.usuario_id !== usuarioId) {
-      await conexion.rollback();
+      await rollbackSeguro(conexion, 'publicarEncuesta');
       return res.status(404).json({ message: 'Encuesta no encontrada.' });
     }
 
     if (encuesta.estado !== 'borrador') {
-      await conexion.rollback();
+      await rollbackSeguro(conexion, 'publicarEncuesta');
       return res.status(409).json({ message: 'La encuesta ya fue publicada.' });
     }
 
@@ -265,7 +287,7 @@ export async function publicarEncuesta(req, res) {
 
     return res.json({ message: 'Encuesta publicada correctamente.' });
   } catch (error) {
-    await conexion.rollback();
+    await rollbackSeguro(conexion, 'publicarEncuesta');
     console.error('Error al publicar encuesta:', error);
     return res.status(500).json({ message: 'No se pudo publicar la encuesta.' });
   } finally {
@@ -290,12 +312,12 @@ export async function ocultarEncuesta(req, res) {
     const encuesta = await obtenerEncuestaBase(encuestaId, conexion);
 
     if (!encuesta || encuesta.usuario_id !== usuarioId) {
-      await conexion.rollback();
+      await rollbackSeguro(conexion, 'ocultarEncuesta');
       return res.status(404).json({ message: 'Encuesta no encontrada.' });
     }
 
     if (encuesta.estado !== 'publicada') {
-      await conexion.rollback();
+      await rollbackSeguro(conexion, 'ocultarEncuesta');
       return res.status(409).json({ message: 'Solo las encuestas publicadas se pueden ocultar.' });
     }
 
@@ -306,7 +328,7 @@ export async function ocultarEncuesta(req, res) {
       message: estaOculta ? 'Encuesta oculta correctamente.' : 'Encuesta visible nuevamente.'
     });
   } catch (error) {
-    await conexion.rollback();
+    await rollbackSeguro(conexion, 'ocultarEncuesta');
     console.error('Error al ocultar encuesta:', error);
     return res.status(500).json({ message: 'No se pudo cambiar la visibilidad.' });
   } finally {
@@ -330,7 +352,7 @@ export async function eliminarEncuestaPropia(req, res) {
     const encuesta = await obtenerEncuestaBase(encuestaId, conexion);
 
     if (!encuesta || encuesta.usuario_id !== usuarioId) {
-      await conexion.rollback();
+      await rollbackSeguro(conexion, 'eliminarEncuestaPropia');
       return res.status(404).json({ message: 'Encuesta no encontrada.' });
     }
 
@@ -339,7 +361,7 @@ export async function eliminarEncuestaPropia(req, res) {
 
     return res.json({ message: 'Encuesta eliminada correctamente.' });
   } catch (error) {
-    await conexion.rollback();
+    await rollbackSeguro(conexion, 'eliminarEncuestaPropia');
     console.error('Error al eliminar encuesta:', error);
     return res.status(500).json({ message: 'No se pudo eliminar la encuesta.' });
   } finally {
@@ -380,6 +402,44 @@ export async function listarRespuestasRecibidas(req, res) {
   }
 }
 
+export async function listarMisRespuestas(req, res) {
+  const usuarioId = Number(req.query.usuarioId);
+
+  if (!usuarioId) {
+    return res.status(400).json({ message: 'Usuario invalido.' });
+  }
+
+  try {
+    const filas = await obtenerEncuestasRespondidasPorUsuario(usuarioId);
+    return res.json(mapearEncuestasRespondidas(filas));
+  } catch (error) {
+    console.error('Error al obtener mis respuestas:', error);
+    return res.status(500).json({ message: 'No se pudo obtener el historial de respuestas.' });
+  }
+}
+
+export async function obtenerMiRespuesta(req, res) {
+  const respuestaId = Number(req.params.respuestaId);
+  const usuarioId = Number(req.query.usuarioId);
+
+  if (!respuestaId || !usuarioId) {
+    return res.status(400).json({ message: 'Datos invalidos.' });
+  }
+
+  try {
+    const filas = await obtenerDetalleRespuestaUsuario(respuestaId, usuarioId);
+
+    if (filas.length === 0) {
+      return res.status(404).json({ message: 'Respuesta no encontrada.' });
+    }
+
+    return res.json(mapearDetalleRespuestaUsuario(filas));
+  } catch (error) {
+    console.error('Error al obtener detalle de mi respuesta:', error);
+    return res.status(500).json({ message: 'No se pudo obtener la respuesta.' });
+  }
+}
+
 export async function responderEncuesta(req, res) {
   const encuestaId = Number(req.params.id);
   const { usuario_id, respuestas } = req.body;
@@ -395,9 +455,20 @@ export async function responderEncuesta(req, res) {
 
     const encuesta = await obtenerEncuestaBase(encuestaId, conexion);
 
-    if (!encuesta || encuesta.estado !== 'publicada') {
-      await conexion.rollback();
+    if (!encuesta || encuesta.estado !== 'publicada' || encuesta.esta_oculta) {
+      await rollbackSeguro(conexion, 'responderEncuesta');
       return res.status(404).json({ message: 'Encuesta no disponible.' });
+    }
+
+    if (encuesta.respuesta_unica_usuario) {
+      const yaRespondio = await usuarioYaRespondioEncuesta(encuestaId, usuario_id, conexion);
+
+      if (yaRespondio) {
+        await rollbackSeguro(conexion, 'responderEncuesta');
+        return res.status(409).json({
+          message: 'Esta encuesta solo permite una respuesta por usuario.'
+        });
+      }
     }
 
     const preguntasEncuesta = await obtenerPreguntasEncuesta(encuestaId, conexion);
@@ -411,7 +482,7 @@ export async function responderEncuesta(req, res) {
       const pregunta = preguntasPorId.get(preguntaId);
 
       if (!pregunta) {
-        await conexion.rollback();
+        await rollbackSeguro(conexion, 'responderEncuesta');
         return res.status(400).json({ message: 'Hay respuestas asociadas a preguntas invalidas.' });
       }
 
@@ -419,7 +490,7 @@ export async function responderEncuesta(req, res) {
         const texto = normalizarTexto(respuesta.texto_respuesta);
 
         if (!texto) {
-          await conexion.rollback();
+          await rollbackSeguro(conexion, 'responderEncuesta');
           return res.status(400).json({ message: 'Las respuestas de texto no pueden ir vacias.' });
         }
 
@@ -431,7 +502,7 @@ export async function responderEncuesta(req, res) {
       const opcion = opcionesPorId.get(opcionId);
 
       if (!opcion || opcion.pregunta_id !== preguntaId) {
-        await conexion.rollback();
+        await rollbackSeguro(conexion, 'responderEncuesta');
         return res.status(400).json({ message: 'Hay opciones que no pertenecen a la pregunta.' });
       }
 
@@ -443,7 +514,7 @@ export async function responderEncuesta(req, res) {
     );
 
     if (faltantesObligatorias.length > 0) {
-      await conexion.rollback();
+      await rollbackSeguro(conexion, 'responderEncuesta');
       return res.status(400).json({
         message: 'Debes responder todas las preguntas obligatorias antes de enviar.'
       });
@@ -467,7 +538,7 @@ export async function responderEncuesta(req, res) {
       mensaje_confirmacion: encuesta.mensaje_confirmacion
     });
   } catch (error) {
-    await conexion.rollback();
+    await rollbackSeguro(conexion, 'responderEncuesta');
     console.error('Error al registrar respuestas:', error);
     return res.status(500).json({ message: 'No se pudo registrar la respuesta.' });
   } finally {

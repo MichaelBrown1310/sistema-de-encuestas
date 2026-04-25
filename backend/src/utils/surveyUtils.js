@@ -10,6 +10,22 @@ export function esImagenValida(valor) {
   return typeof valor === 'string' && valor.startsWith('data:image/');
 }
 
+function calcularBytesBase64(dataUrl) {
+  if (typeof dataUrl !== 'string') {
+    return 0;
+  }
+
+  const partes = dataUrl.split(',');
+
+  if (partes.length < 2) {
+    return 0;
+  }
+
+  const base64 = partes[1];
+  const padding = (base64.match(/=*$/)?.[0].length || 0);
+  return Math.floor((base64.length * 3) / 4) - padding;
+}
+
 export function mapearEncuestaDetallada(filas) {
   if (filas.length === 0) {
     return null;
@@ -26,6 +42,7 @@ export function mapearEncuestaDetallada(filas) {
     estado: encuestaBase.estado,
     mensaje_confirmacion: encuestaBase.mensaje_confirmacion,
     esta_oculta: Boolean(encuestaBase.esta_oculta),
+    respuesta_unica_usuario: Boolean(encuestaBase.respuesta_unica_usuario),
     fecha_creacion: encuestaBase.fecha_creacion,
     nombre_creador: encuestaBase.nombre_creador,
     secciones: []
@@ -94,6 +111,79 @@ export function mapearEncuestaDetallada(filas) {
     }));
 
   return encuesta;
+}
+
+export function mapearEncuestasRespondidas(filas) {
+  return filas.map((fila) => ({
+    respuesta_id: fila.respuesta_id,
+    fecha_respuesta: fila.fecha_respuesta,
+    encuesta: {
+      id: fila.encuesta_id,
+      titulo: fila.titulo,
+      descripcion: fila.descripcion,
+      categoria: fila.categoria,
+      estado: fila.estado,
+      nombre_creador: fila.nombre_creador
+    }
+  }));
+}
+
+export function mapearDetalleRespuestaUsuario(filas) {
+  if (filas.length === 0) {
+    return null;
+  }
+
+  const base = filas[0];
+  const respuesta = {
+    respuesta_id: base.respuesta_id,
+    fecha_respuesta: base.fecha_respuesta,
+    encuesta: {
+      id: base.encuesta_id,
+      titulo: base.encuesta_titulo,
+      descripcion: base.encuesta_descripcion,
+      categoria: base.encuesta_categoria,
+      estado: base.encuesta_estado,
+      nombre_creador: base.nombre_creador
+    },
+    detalles: []
+  };
+
+  const detalles = new Map();
+
+  for (const fila of filas) {
+    if (!detalles.has(fila.pregunta_id)) {
+      detalles.set(fila.pregunta_id, {
+        seccion_id: fila.seccion_id,
+        seccion_titulo: fila.seccion_titulo,
+        seccion_orden: fila.seccion_orden,
+        pregunta_id: fila.pregunta_id,
+        enunciado: fila.enunciado,
+        tipo: fila.tipo,
+        pregunta_orden: fila.pregunta_orden,
+        texto_respuesta: fila.texto_respuesta,
+        opciones: []
+      });
+
+      respuesta.detalles.push(detalles.get(fila.pregunta_id));
+    }
+
+    if (fila.opcion_id) {
+      detalles.get(fila.pregunta_id).opciones.push({
+        id: fila.opcion_id,
+        texto: fila.opcion_texto
+      });
+    }
+  }
+
+  respuesta.detalles.sort((a, b) => {
+    if (a.seccion_orden !== b.seccion_orden) {
+      return a.seccion_orden - b.seccion_orden;
+    }
+
+    return a.pregunta_orden - b.pregunta_orden;
+  });
+
+  return respuesta;
 }
 
 export function mapearRespuestasRecibidas(filas) {
@@ -204,6 +294,39 @@ export function validarSecciones(secciones) {
         return 'Todas las opciones deben tener texto.';
       }
     }
+  }
+
+  return '';
+}
+
+export function validarPesoImagenes(imagenPortada, secciones) {
+  const LIMITE_IMAGEN = 1.5 * 1024 * 1024;
+  const LIMITE_TOTAL = 3 * 1024 * 1024;
+
+  let total = 0;
+
+  const pesoPortada = calcularBytesBase64(imagenPortada);
+
+  if (pesoPortada > LIMITE_IMAGEN) {
+    return 'La imagen de portada supera el limite de 1.5 MB.';
+  }
+
+  total += pesoPortada;
+
+  for (const seccion of secciones || []) {
+    for (const pregunta of seccion.preguntas || []) {
+      const pesoPregunta = calcularBytesBase64(pregunta.imagen);
+
+      if (pesoPregunta > LIMITE_IMAGEN) {
+        return 'Una de las imagenes de pregunta supera el limite de 1.5 MB.';
+      }
+
+      total += pesoPregunta;
+    }
+  }
+
+  if (total > LIMITE_TOTAL) {
+    return 'El total de imagenes de la encuesta supera el limite permitido de 3 MB.';
   }
 
   return '';

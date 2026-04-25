@@ -3,7 +3,8 @@ USE encuestas;
 ALTER TABLE encuestas
   ADD COLUMN imagen_portada LONGTEXT NULL AFTER descripcion,
   ADD COLUMN mensaje_confirmacion TEXT NOT NULL DEFAULT 'Tu respuesta ha sido enviada correctamente.' AFTER estado,
-  ADD COLUMN esta_oculta TINYINT(1) NOT NULL DEFAULT 0 AFTER mensaje_confirmacion;
+  ADD COLUMN esta_oculta TINYINT(1) NOT NULL DEFAULT 0 AFTER mensaje_confirmacion,
+  ADD COLUMN respuesta_unica_usuario TINYINT(1) NOT NULL DEFAULT 0 AFTER esta_oculta;
 
 CREATE TABLE IF NOT EXISTS secciones (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

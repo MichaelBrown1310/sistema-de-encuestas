@@ -34,6 +34,7 @@ export interface Encuesta {
   estado: string;
   mensaje_confirmacion: string;
   esta_oculta?: boolean;
+  respuesta_unica_usuario?: boolean;
   fecha_creacion: string;
 }
 
@@ -59,6 +60,7 @@ export interface DatosNuevaEncuesta {
   categoria: string;
   estado: string;
   mensaje_confirmacion: string;
+  respuesta_unica_usuario: boolean;
   secciones: SeccionEncuesta[];
 }
 
@@ -99,6 +101,33 @@ export interface RespuestasRecibidasEncuesta {
   titulo: string;
   estado: string;
   respuestas: RespuestaRecibida[];
+}
+
+export interface MiRespuestaResumen {
+  respuesta_id: number;
+  fecha_respuesta: string;
+  encuesta: {
+    id: number;
+    titulo: string;
+    descripcion: string;
+    categoria: string;
+    estado: string;
+    nombre_creador: string;
+  };
+}
+
+export interface MiRespuestaDetalle {
+  respuesta_id: number;
+  fecha_respuesta: string;
+  encuesta: {
+    id: number;
+    titulo: string;
+    descripcion: string;
+    categoria: string;
+    estado: string;
+    nombre_creador: string;
+  };
+  detalles: RespuestaRecibidaDetalle[];
 }
 
 export async function obtenerResumenUsuario(usuarioId: number) {
@@ -163,6 +192,18 @@ export async function eliminarEncuesta(encuestaId: number, usuarioId: number) {
 export async function obtenerRespuestasRecibidas(encuestaId: number, usuarioId: number) {
   const { data } = await api.get<RespuestasRecibidasEncuesta>(
     `/encuestas/${encuestaId}/respuestas?usuarioId=${usuarioId}`
+  );
+  return data;
+}
+
+export async function obtenerMisRespuestas(usuarioId: number) {
+  const { data } = await api.get<MiRespuestaResumen[]>(`/encuestas/mis-respuestas?usuarioId=${usuarioId}`);
+  return data;
+}
+
+export async function obtenerMiRespuesta(respuestaId: number, usuarioId: number) {
+  const { data } = await api.get<MiRespuestaDetalle>(
+    `/encuestas/mis-respuestas/${respuestaId}?usuarioId=${usuarioId}`
   );
   return data;
 }

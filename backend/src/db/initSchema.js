@@ -90,6 +90,14 @@ export async function inicializarEsquema() {
     `);
   }
 
+  if (!(await existeColumna('encuestas', 'respuesta_unica_usuario'))) {
+    await pool.query(`
+      ALTER TABLE encuestas
+      ADD COLUMN respuesta_unica_usuario TINYINT(1) NOT NULL DEFAULT 0
+      AFTER esta_oculta
+    `);
+  }
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS secciones (
       id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

@@ -29,6 +29,7 @@ export async function obtenerEncuestasPorUsuario(usuarioId) {
       estado,
       mensaje_confirmacion,
       esta_oculta,
+      respuesta_unica_usuario,
       fecha_creacion
     FROM encuestas
     WHERE usuario_id = ?
@@ -53,6 +54,7 @@ export async function obtenerEncuestasPublicadas() {
       e.estado,
       e.mensaje_confirmacion,
       e.esta_oculta,
+      e.respuesta_unica_usuario,
       e.fecha_creacion,
       u.nombre AS nombre_creador
     FROM encuestas e
@@ -78,6 +80,7 @@ export async function obtenerDetalleEncuestaPublicada(encuestaId) {
       e.estado,
       e.mensaje_confirmacion,
       e.esta_oculta,
+      e.respuesta_unica_usuario,
       e.fecha_creacion,
       u.nombre AS nombre_creador,
       s.id AS seccion_id,
@@ -120,6 +123,7 @@ export async function obtenerDetalleEncuestaPorUsuario(encuestaId, usuarioId) {
       e.estado,
       e.mensaje_confirmacion,
       e.esta_oculta,
+      e.respuesta_unica_usuario,
       e.fecha_creacion,
       u.nombre AS nombre_creador,
       s.id AS seccion_id,
@@ -152,7 +156,7 @@ export async function obtenerDetalleEncuestaPorUsuario(encuestaId, usuarioId) {
 export async function obtenerEncuestaBase(encuestaId, conexion) {
   const [encuestas] = await conexion.query(
     `
-    SELECT id, usuario_id, estado, mensaje_confirmacion, esta_oculta
+    SELECT id, usuario_id, estado, mensaje_confirmacion, esta_oculta, respuesta_unica_usuario
     FROM encuestas
     WHERE id = ?
     LIMIT 1
@@ -200,9 +204,10 @@ export async function crearEncuestaCompleta(datos, conexion) {
       imagen_portada,
       categoria,
       estado,
-      mensaje_confirmacion
+      mensaje_confirmacion,
+      respuesta_unica_usuario
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       datos.usuario_id,
@@ -211,7 +216,8 @@ export async function crearEncuestaCompleta(datos, conexion) {
       datos.imagen_portada,
       datos.categoria,
       datos.estado,
-      datos.mensaje_confirmacion
+      datos.mensaje_confirmacion,
+      datos.respuesta_unica_usuario ? 1 : 0
     ]
   );
 
@@ -286,6 +292,7 @@ export async function actualizarEncuesta(encuestaId, datos, conexion) {
       imagen_portada = ?,
       categoria = ?,
       mensaje_confirmacion = ?,
+      respuesta_unica_usuario = ?,
       esta_oculta = 0
     WHERE id = ?
     `,
@@ -295,6 +302,7 @@ export async function actualizarEncuesta(encuestaId, datos, conexion) {
       datos.imagen_portada,
       datos.categoria,
       datos.mensaje_confirmacion,
+      datos.respuesta_unica_usuario ? 1 : 0,
       encuestaId
     ]
   );
@@ -409,6 +417,82 @@ export async function obtenerRespuestasRecibidas(encuestaId, usuarioId) {
     ORDER BY r.fecha_respuesta DESC, s.orden ASC, p.orden ASC, op.orden ASC
     `,
     [encuestaId, usuarioId]
+  );
+
+  return filas;
+}
+
+export async function usuarioYaRespondioEncuesta(encuestaId, usuarioId, conexion) {
+  const [filas] = await conexion.query(
+    `
+    SELECT id
+    FROM respuestas
+    WHERE encuesta_id = ? AND usuario_id = ?
+    LIMIT 1
+    `,
+    [encuestaId, usuarioId]
+  );
+
+  return filas.length > 0;
+}
+
+export async function obtenerEncuestasRespondidasPorUsuario(usuarioId) {
+  const [filas] = await pool.query(
+    `
+    SELECT
+      r.id AS respuesta_id,
+      r.fecha_respuesta,
+      e.id AS encuesta_id,
+      e.titulo,
+      e.descripcion,
+      e.categoria,
+      e.estado,
+      u.nombre AS nombre_creador
+    FROM respuestas r
+    INNER JOIN encuestas e ON e.id = r.encuesta_id
+    INNER JOIN usuarios u ON u.id = e.usuario_id
+    WHERE r.usuario_id = ?
+    ORDER BY r.fecha_respuesta DESC
+    `,
+    [usuarioId]
+  );
+
+  return filas;
+}
+
+export async function obtenerDetalleRespuestaUsuario(respuestaId, usuarioId) {
+  const [filas] = await pool.query(
+    `
+    SELECT
+      r.id AS respuesta_id,
+      r.fecha_respuesta,
+      e.id AS encuesta_id,
+      e.titulo AS encuesta_titulo,
+      e.descripcion AS encuesta_descripcion,
+      e.categoria AS encuesta_categoria,
+      e.estado AS encuesta_estado,
+      u.nombre AS nombre_creador,
+      s.id AS seccion_id,
+      s.titulo AS seccion_titulo,
+      s.orden AS seccion_orden,
+      p.id AS pregunta_id,
+      p.enunciado,
+      p.tipo,
+      p.orden AS pregunta_orden,
+      dr.texto_respuesta,
+      op.id AS opcion_id,
+      op.texto AS opcion_texto
+    FROM respuestas r
+    INNER JOIN encuestas e ON e.id = r.encuesta_id
+    INNER JOIN usuarios u ON u.id = e.usuario_id
+    INNER JOIN detalle_respuestas dr ON dr.respuesta_id = r.id
+    INNER JOIN preguntas p ON p.id = dr.pregunta_id
+    INNER JOIN secciones s ON s.id = p.seccion_id
+    LEFT JOIN opciones_pregunta op ON op.id = dr.opcion_id
+    WHERE r.id = ? AND r.usuario_id = ?
+    ORDER BY s.orden ASC, p.orden ASC, op.orden ASC
+    `,
+    [respuestaId, usuarioId]
   );
 
   return filas;
