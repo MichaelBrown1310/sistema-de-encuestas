@@ -76,7 +76,7 @@ export async function inicializarEsquema() {
   if (!(await existeColumna('encuestas', 'mensaje_confirmacion'))) {
     await pool.query(`
       ALTER TABLE encuestas
-      ADD COLUMN mensaje_confirmacion TEXT NOT NULL
+      ADD COLUMN mensaje_confirmacion VARCHAR(255) NOT NULL
       DEFAULT 'Tu respuesta ha sido enviada correctamente.'
       AFTER estado
     `);
