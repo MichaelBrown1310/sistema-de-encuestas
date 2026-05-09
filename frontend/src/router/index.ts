@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from '@ionic/vue-router';
 import LoginPage from '../views/LoginPage.vue';
 import RegisterPage from '../views/RegisterPage.vue';
+import Layout from './Layout.vue';
 import HomePage from '../views/HomePage.vue';
 import EncuestasPage from '../views/EncuestasPage.vue';
 import ExplorarEncuestasPage from '../views/ExplorarEncuestasPage.vue';
@@ -13,10 +14,6 @@ import { obtenerUsuarioAutenticado } from '../services/auth';
 
 const routes = [
   {
-    path: '/',
-    redirect: '/home'
-  },
-  {
     path: '/login',
     component: LoginPage
   },
@@ -25,40 +22,50 @@ const routes = [
     component: RegisterPage
   },
   {
-    path: '/home',
-    component: HomePage
-  },
-  {
-    path: '/encuestas',
-    component: EncuestasPage
-  },
-  {
-    path: '/encuestas/explorar',
-    component: ExplorarEncuestasPage
-  },
-  {
-    path: '/encuestas/crear',
-    component: CrearEncuestaPage
-  },
-  {
-    path: '/encuestas/:id/editar',
-    component: CrearEncuestaPage
-  },
-  {
-    path: '/encuestas/:id/responder',
-    component: ResponderEncuestaPage
-  },
-  {
-    path: '/encuestas/:id/respuestas',
-    component: SurveyResponsesPage
-  },
-  {
-    path: '/respuestas',
-    component: RespuestasPage
-  },
-  {
-    path: '/respuestas/:respuestaId',
-    component: MyResponseDetailPage
+    path: '/',
+    component: Layout,
+    children: [
+      {
+        path: '',
+        redirect: '/home'
+      },
+      {
+        path: 'home',
+        component: HomePage
+      },
+      {
+        path: 'encuestas',
+        component: EncuestasPage
+      },
+      {
+        path: 'encuestas/explorar',
+        component: ExplorarEncuestasPage
+      },
+      {
+        path: 'encuestas/crear',
+        component: CrearEncuestaPage
+      },
+      {
+        path: 'encuestas/:id/editar',
+        component: CrearEncuestaPage
+      },
+      {
+        path: 'encuestas/:id/responder',
+        component: ResponderEncuestaPage
+      },
+      {
+        path: 'encuestas/:id/respuestas',
+        component: SurveyResponsesPage
+      },
+      {
+        path: 'respuestas',
+        component: RespuestasPage
+      },
+      {
+        path: 'respuestas/:respuestaId',
+        component: MyResponseDetailPage
+      }
+    ]
   }
 ];
 

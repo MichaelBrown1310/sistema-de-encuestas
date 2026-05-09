@@ -1,5 +1,4 @@
 <template>
-  <AppShell>
     <PageHeader
       etiqueta="Creacion"
       :titulo="esEdicion ? 'Editar borrador' : 'Crear encuesta'"
@@ -279,7 +278,6 @@
         <p>{{ mensaje }}</p>
       </ion-text>
     </section>
-  </AppShell>
 </template>
 
 <script setup lang="ts">
@@ -292,11 +290,9 @@ import {
   IonSelectOption,
   IonText,
   IonTextarea,
-  onIonViewWillEnter
 } from '@ionic/vue';
-import { computed, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import AppShell from '../components/AppShell.vue';
 import PageHeader from '../components/PageHeader.vue';
 import { obtenerUsuarioAutenticado } from '../services/auth';
 import {
@@ -747,7 +743,7 @@ async function guardarEncuesta() {
   }
 }
 
-onIonViewWillEnter(() => {
+onMounted(() => {
   mensaje.value = '';
 
   if (esEdicion.value) {

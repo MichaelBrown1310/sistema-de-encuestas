@@ -1,5 +1,4 @@
 <template>
-  <AppShell>
     <PageHeader
       etiqueta="Descubrir"
       titulo="Explorar encuestas"
@@ -25,13 +24,11 @@
         </template>
       </SurveyCard>
     </div>
-  </AppShell>
 </template>
 
 <script setup lang="ts">
-import { IonButton, onIonViewWillEnter } from '@ionic/vue';
-import { ref } from 'vue';
-import AppShell from '../components/AppShell.vue';
+import { IonButton } from '@ionic/vue';
+import { onMounted, ref } from 'vue';
 import PageHeader from '../components/PageHeader.vue';
 import SurveyCard from '../components/SurveyCard.vue';
 import { obtenerEncuestasPublicadas, type EncuestaPublica } from '../services/encuestas';
@@ -50,7 +47,7 @@ async function cargarEncuestasPublicadas() {
   }
 }
 
-onIonViewWillEnter(() => {
+onMounted(() => {
   cargarEncuestasPublicadas();
 });
 </script>

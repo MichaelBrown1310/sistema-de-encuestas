@@ -1,5 +1,4 @@
 <template>
-  <AppShell>
     <PageHeader
       etiqueta="Gestion"
       titulo="Mis encuestas"
@@ -89,13 +88,11 @@
     <ion-text v-if="mensaje" :color="tipoMensaje">
       <p>{{ mensaje }}</p>
     </ion-text>
-  </AppShell>
 </template>
 
 <script setup lang="ts">
-import { IonButton, IonText, onIonViewWillEnter } from '@ionic/vue';
-import { ref } from 'vue';
-import AppShell from '../components/AppShell.vue';
+import { IonButton, IonText } from '@ionic/vue';
+import { onMounted, ref } from 'vue';
 import PageHeader from '../components/PageHeader.vue';
 import SurveyCard from '../components/SurveyCard.vue';
 import { obtenerUsuarioAutenticado } from '../services/auth';
@@ -238,7 +235,7 @@ async function manejarEliminacion(encuestaId: number) {
   }
 }
 
-onIonViewWillEnter(() => {
+onMounted(() => {
   cargarEncuestas();
 });
 </script>

@@ -1,5 +1,4 @@
 <template>
-  <AppShell>
     <PageHeader
       v-if="encuesta"
       etiqueta="Responder"
@@ -140,14 +139,12 @@
     </section>
 
     <div v-else class="estado-vacio">No se encontro la encuesta solicitada.</div>
-  </AppShell>
 </template>
 
 <script setup lang="ts">
-import { IonButton, IonItem, IonText, IonTextarea, onIonViewWillEnter } from '@ionic/vue';
-import { computed, reactive, ref } from 'vue';
+import { IonButton, IonItem, IonText, IonTextarea } from '@ionic/vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import AppShell from '../components/AppShell.vue';
 import PageHeader from '../components/PageHeader.vue';
 import { obtenerUsuarioAutenticado } from '../services/auth';
 import {
@@ -393,7 +390,7 @@ async function enviarFormulario() {
   }
 }
 
-onIonViewWillEnter(() => {
+onMounted(() => {
   cargarEncuesta();
 });
 </script>

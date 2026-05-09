@@ -1,5 +1,4 @@
 <template>
-  <AppShell>
     <PageHeader
       etiqueta="Mi respuesta"
       :titulo="detalle?.encuesta.titulo || 'Detalle de respuesta'"
@@ -37,14 +36,11 @@
         </article>
       </div>
     </section>
-  </AppShell>
 </template>
 
 <script setup lang="ts">
-import { onIonViewWillEnter } from '@ionic/vue';
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import AppShell from '../components/AppShell.vue';
 import PageHeader from '../components/PageHeader.vue';
 import { obtenerUsuarioAutenticado } from '../services/auth';
 import { obtenerMiRespuesta, type MiRespuestaDetalle } from '../services/encuestas';
@@ -77,7 +73,7 @@ async function cargarDetalle() {
   }
 }
 
-onIonViewWillEnter(() => {
+onMounted(() => {
   cargarDetalle();
 });
 </script>

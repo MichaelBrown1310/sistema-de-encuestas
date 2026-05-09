@@ -1,5 +1,4 @@
 <template>
-  <AppShell>
     <PageHeader
       etiqueta="Seguimiento"
       titulo="Mis respuestas"
@@ -27,13 +26,11 @@
         </div>
       </article>
     </div>
-  </AppShell>
 </template>
 
 <script setup lang="ts">
-import { IonButton, onIonViewWillEnter } from '@ionic/vue';
-import { ref } from 'vue';
-import AppShell from '../components/AppShell.vue';
+import { IonButton } from '@ionic/vue';
+import { onMounted, ref } from 'vue';
 import PageHeader from '../components/PageHeader.vue';
 import { obtenerUsuarioAutenticado } from '../services/auth';
 import { obtenerMisRespuestas, type MiRespuestaResumen } from '../services/encuestas';
@@ -62,7 +59,7 @@ async function cargarMisRespuestas() {
   }
 }
 
-onIonViewWillEnter(() => {
+onMounted(() => {
   cargarMisRespuestas();
 });
 </script>

@@ -1,6 +1,5 @@
 <template>
-  <AppShell>
-    <section class="hero-panel">
+  <section class="hero-panel">
       <div>
         <p class="hero-panel__etiqueta">Tu espacio de encuestas</p>
         <h1 class="hero-panel__titulo">Bienvenido {{ nombreUsuario }}</h1>
@@ -16,9 +15,9 @@
           Explorar encuestas
         </ion-button>
       </div>
-    </section>
+  </section>
 
-    <section class="metricas-grid">
+  <section class="metricas-grid">
       <article class="tarjeta-metrica">
         <p class="tarjeta-metrica__etiqueta">Mis encuestas</p>
         <h2 class="tarjeta-metrica__valor">{{ resumen.totalEncuestas }}</h2>
@@ -36,9 +35,9 @@
         <h2 class="tarjeta-metrica__valor">{{ resumen.totalBorradores }}</h2>
         <p class="tarjeta-metrica__detalle">Pendientes por completar</p>
       </article>
-    </section>
+  </section>
 
-    <section class="seccion-panel">
+  <section class="seccion-panel">
       <div class="seccion-panel__encabezado">
         <div>
           <p class="seccion-panel__etiqueta">Actividad reciente</p>
@@ -62,9 +61,9 @@
           :detalle="`Creada el ${formatearFecha(encuesta.fecha_creacion)}`"
         />
       </div>
-    </section>
+  </section>
 
-    <section class="accesos-grid">
+  <section class="accesos-grid">
       <router-link to="/encuestas" class="acceso-panel">
         <p class="acceso-panel__etiqueta">Gestion</p>
         <h3>Mis encuestas</h3>
@@ -88,14 +87,12 @@
         <h3>Nueva encuesta</h3>
         <span>Disena un nuevo formulario con secciones y preguntas.</span>
       </router-link>
-    </section>
-  </AppShell>
+  </section>
 </template>
 
 <script setup lang="ts">
-import { IonButton, onIonViewWillEnter } from '@ionic/vue';
-import { reactive, ref } from 'vue';
-import AppShell from '../components/AppShell.vue';
+import { IonButton } from '@ionic/vue';
+import { onMounted, reactive, ref } from 'vue';
 import SurveyCard from '../components/SurveyCard.vue';
 import { obtenerUsuarioAutenticado } from '../services/auth';
 import { obtenerEncuestasUsuario, obtenerResumenUsuario, type Encuesta } from '../services/encuestas';
@@ -139,7 +136,7 @@ async function cargarPanel() {
   }
 }
 
-onIonViewWillEnter(() => {
+onMounted(() => {
   cargarPanel();
 });
 </script>

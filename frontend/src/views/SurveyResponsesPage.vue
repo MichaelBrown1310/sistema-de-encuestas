@@ -1,5 +1,4 @@
 <template>
-  <AppShell>
     <PageHeader
       etiqueta="Resultados"
       :titulo="datosEncuesta?.titulo || 'Respuestas de la encuesta'"
@@ -125,14 +124,12 @@
         </details>
       </section>
     </div>
-  </AppShell>
 </template>
 
 <script setup lang="ts">
-import { IonButton, onIonViewWillEnter } from '@ionic/vue';
-import { computed, ref } from 'vue';
+import { IonButton } from '@ionic/vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import AppShell from '../components/AppShell.vue';
 import PageHeader from '../components/PageHeader.vue';
 import { obtenerUsuarioAutenticado } from '../services/auth';
 import {
@@ -300,7 +297,7 @@ async function cargarRespuestas() {
   }
 }
 
-onIonViewWillEnter(() => {
+onMounted(() => {
   cargarRespuestas();
 });
 </script>
