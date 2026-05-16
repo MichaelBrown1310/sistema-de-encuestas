@@ -153,6 +153,49 @@ export async function obtenerDetalleEncuestaPorUsuario(encuestaId, usuarioId) {
   return filas;
 }
 
+export async function obtenerDetalleEncuestaPorAdministrador(encuestaId) {
+  const [filas] = await pool.query(
+    `
+    SELECT
+      e.id AS encuesta_id,
+      e.usuario_id,
+      e.titulo,
+      e.descripcion,
+      e.imagen_portada,
+      e.categoria,
+      e.estado,
+      e.mensaje_confirmacion,
+      e.esta_oculta,
+      e.respuesta_unica_usuario,
+      e.fecha_creacion,
+      u.nombre AS nombre_creador,
+      s.id AS seccion_id,
+      s.titulo AS seccion_titulo,
+      s.descripcion AS seccion_descripcion,
+      s.orden AS seccion_orden,
+      p.id AS pregunta_id,
+      p.enunciado,
+      p.imagen AS pregunta_imagen,
+      p.tipo,
+      p.es_obligatoria,
+      p.orden AS pregunta_orden,
+      op.id AS opcion_id,
+      op.texto AS opcion_texto,
+      op.orden AS opcion_orden
+    FROM encuestas e
+    INNER JOIN usuarios u ON u.id = e.usuario_id
+    LEFT JOIN secciones s ON s.encuesta_id = e.id
+    LEFT JOIN preguntas p ON p.seccion_id = s.id
+    LEFT JOIN opciones_pregunta op ON op.pregunta_id = p.id
+    WHERE e.id = ?
+    ORDER BY s.orden ASC, p.orden ASC, op.orden ASC
+    `,
+    [encuestaId]
+  );
+
+  return filas;
+}
+
 export async function obtenerEncuestaBase(encuestaId, conexion) {
   const [encuestas] = await conexion.query(
     `
@@ -417,6 +460,44 @@ export async function obtenerRespuestasRecibidas(encuestaId, usuarioId) {
     ORDER BY r.fecha_respuesta DESC, s.orden ASC, p.orden ASC, op.orden ASC
     `,
     [encuestaId, usuarioId]
+  );
+
+  return filas;
+}
+
+export async function obtenerRespuestasRecibidasComoAdministrador(encuestaId) {
+  const [filas] = await pool.query(
+    `
+    SELECT
+      e.id AS encuesta_id,
+      e.titulo AS encuesta_titulo,
+      e.estado AS encuesta_estado,
+      r.id AS respuesta_id,
+      r.fecha_respuesta,
+      u.id AS respondedor_id,
+      u.nombre AS respondedor_nombre,
+      u.correo AS respondedor_correo,
+      s.id AS seccion_id,
+      s.titulo AS seccion_titulo,
+      s.orden AS seccion_orden,
+      p.id AS pregunta_id,
+      p.enunciado,
+      p.tipo,
+      p.orden AS pregunta_orden,
+      dr.texto_respuesta,
+      op.id AS opcion_id,
+      op.texto AS opcion_texto
+    FROM encuestas e
+    INNER JOIN respuestas r ON r.encuesta_id = e.id
+    INNER JOIN usuarios u ON u.id = r.usuario_id
+    INNER JOIN detalle_respuestas dr ON dr.respuesta_id = r.id
+    INNER JOIN preguntas p ON p.id = dr.pregunta_id
+    INNER JOIN secciones s ON s.id = p.seccion_id
+    LEFT JOIN opciones_pregunta op ON op.id = dr.opcion_id
+    WHERE e.id = ?
+    ORDER BY r.fecha_respuesta DESC, s.orden ASC, p.orden ASC, op.orden ASC
+    `,
+    [encuestaId]
   );
 
   return filas;

@@ -2,17 +2,22 @@ import pool from '../db.js';
 
 export async function buscarUsuarioPorCorreo(correo, conexion = pool) {
   const [usuarios] = await conexion.query(
-    'SELECT id, nombre, correo, password_hash FROM usuarios WHERE correo = ? LIMIT 1',
+    'SELECT id, nombre, correo, rol, password_hash FROM usuarios WHERE correo = ? LIMIT 1',
     [correo]
   );
 
   return usuarios[0] || null;
 }
 
-export async function crearUsuario({ nombre, correo, passwordHash }, conexion = pool) {
+export async function contarUsuarios(conexion = pool) {
+  const [filas] = await conexion.query('SELECT COUNT(*) AS total FROM usuarios');
+  return Number(filas[0]?.total || 0);
+}
+
+export async function crearUsuario({ nombre, correo, rol, passwordHash }, conexion = pool) {
   const [resultado] = await conexion.query(
-    'INSERT INTO usuarios (nombre, correo, password_hash) VALUES (?, ?, ?)',
-    [nombre, correo, passwordHash]
+    'INSERT INTO usuarios (nombre, correo, rol, password_hash) VALUES (?, ?, ?, ?)',
+    [nombre, correo, rol, passwordHash]
   );
 
   return resultado.insertId;
