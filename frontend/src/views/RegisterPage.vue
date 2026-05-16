@@ -31,6 +31,16 @@
 
           <ion-item>
             <ion-input
+              v-model="formulario.edad"
+              label="edad"
+              label-placement="stacked"
+              type="number"
+              placeholder="18"
+            />
+          </ion-item>
+
+          <ion-item>
+            <ion-input
               v-model="formulario.password"
               label="Contrasena"
               label-placement="stacked"
@@ -69,7 +79,8 @@ import { registrarUsuario } from '../services/auth';
 const formulario = reactive({
   nombre: '',
   correo: '',
-  password: ''
+  password: '',
+  edad:''
 });
 
 const cargando = ref(false);
@@ -79,9 +90,14 @@ const tipoMensaje = ref<'success' | 'danger'>('success');
 async function manejarRegistro() {
   mensaje.value = '';
 
-  if (!formulario.nombre || !formulario.correo || !formulario.password) {
+  if (!formulario.nombre || !formulario.correo || !formulario.password || !formulario.edad) {
     tipoMensaje.value = 'danger';
     mensaje.value = 'Debes completar todos los campos.';
+    return;
+  }
+   if (Number(formulario.edad)> 24|| Number(formulario.edad)<16 ) {
+    tipoMensaje.value = 'danger';
+    mensaje.value = 'Debes tener entre 16 y 24 años.';
     return;
   }
 
