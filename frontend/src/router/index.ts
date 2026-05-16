@@ -10,7 +10,8 @@ import ResponderEncuestaPage from '../views/ResponderEncuestaPage.vue';
 import RespuestasPage from '../views/RespuestasPage.vue';
 import SurveyResponsesPage from '../views/SurveyResponsesPage.vue';
 import MyResponseDetailPage from '../views/MyResponseDetailPage.vue';
-import { obtenerUsuarioAutenticado } from '../services/auth';
+import { useAuthStore } from '../stores/auth';
+import { pinia } from '../stores/pinia';
 
 const routes = [
   {
@@ -75,15 +76,16 @@ const router = createRouter({
 });
 
 router.beforeEach((to) => {
-  const usuario = obtenerUsuarioAutenticado();
+  const authStore = useAuthStore(pinia);
+  authStore.inicializarDesdePersistencia();
   const esRutaAutenticacion = to.path === '/login' || to.path === '/register';
   const esRutaProtegida = !esRutaAutenticacion;
 
-  if (!usuario && esRutaProtegida) {
+  if (!authStore.isAuthenticated && esRutaProtegida) {
     return '/login';
   }
 
-  if (usuario && esRutaAutenticacion) {
+  if (authStore.isAuthenticated && esRutaAutenticacion) {
     return '/home';
   }
 });

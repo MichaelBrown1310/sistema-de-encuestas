@@ -92,13 +92,13 @@
 
 <script setup lang="ts">
 import { IonButton } from '@ionic/vue';
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import SurveyCard from '../components/SurveyCard.vue';
-import { obtenerUsuarioAutenticado } from '../services/auth';
 import { obtenerEncuestasUsuario, obtenerResumenUsuario, type Encuesta } from '../services/encuestas';
+import { useAuthStore } from '../stores/auth';
 
-const usuario = obtenerUsuarioAutenticado();
-const nombreUsuario = usuario?.nombre || 'usuario';
+const authStore = useAuthStore();
+const nombreUsuario = computed(() => authStore.user?.nombre || 'usuario');
 
 const cargando = ref(false);
 const encuestas = ref<Encuesta[]>([]);
@@ -113,6 +113,8 @@ function formatearFecha(fecha: string) {
 }
 
 async function cargarPanel() {
+  const usuario = authStore.user;
+
   if (!usuario) {
     return;
   }

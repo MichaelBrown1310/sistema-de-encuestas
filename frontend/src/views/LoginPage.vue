@@ -56,9 +56,11 @@ import {
 import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import AuthCard from '../components/AuthCard.vue';
-import { guardarUsuarioAutenticado, iniciarSesion } from '../services/auth';
+import { iniciarSesion } from '../services/auth';
+import { useAuthStore } from '../stores/auth';
 
 const enrutador = useRouter();
+const authStore = useAuthStore();
 
 const formulario = reactive({
   correo: '',
@@ -92,7 +94,10 @@ async function manejarInicioSesion() {
   try {
     cargando.value = true;
     const respuesta = await iniciarSesion(formulario);
-    guardarUsuarioAutenticado(respuesta.user);
+    authStore.establecerSesion({
+      token: respuesta.token,
+      user: respuesta.user
+    });
     tipoMensaje.value = 'success';
     mensaje.value = respuesta.message;
     await enrutador.push('/home');

@@ -7,6 +7,7 @@ import {
   crearEncuestaCompleta,
   crearRespuesta,
   eliminarEncuesta,
+  obtenerDetalleEncuestaPorAdministrador,
   obtenerDetalleEncuestaPublicada,
   obtenerDetalleEncuestaPorUsuario,
   obtenerDetalleRespuestaUsuario,
@@ -16,6 +17,7 @@ import {
   obtenerEncuestasPublicadas,
   obtenerOpcionesPreguntas,
   obtenerPreguntasEncuesta,
+  obtenerRespuestasRecibidasComoAdministrador,
   obtenerRespuestasRecibidas,
   obtenerResumenEncuestasPorUsuario
   ,
@@ -43,9 +45,13 @@ async function rollbackSeguro(conexion, contexto) {
   }
 }
 
+function esAdministrador(req) {
+  return req.user?.rol === 'admin';
+}
+
 export async function exportarRespuestasEncuesta(req, res) {
   const encuestaId = Number(req.params.id);
-  const usuarioId = Number(req.query.usuarioId);
+  const usuarioId = Number(req.user?.id);
   const formato = String(req.query.formato || 'csv').toLowerCase();
 
   if (!encuestaId || !usuarioId) {
@@ -57,8 +63,12 @@ export async function exportarRespuestasEncuesta(req, res) {
   }
 
   try {
-    const filas = await obtenerRespuestasRecibidas(encuestaId, usuarioId);
-    const encuesta = await obtenerDetalleEncuestaPorUsuario(encuestaId, usuarioId);
+    const filas = esAdministrador(req)
+      ? await obtenerRespuestasRecibidasComoAdministrador(encuestaId)
+      : await obtenerRespuestasRecibidas(encuestaId, usuarioId);
+    const encuesta = esAdministrador(req)
+      ? await obtenerDetalleEncuestaPorAdministrador(encuestaId)
+      : await obtenerDetalleEncuestaPorUsuario(encuestaId, usuarioId);
 
     if (encuesta.length === 0) {
       return res.status(404).json({ message: 'Encuesta no encontrada.' });
@@ -95,7 +105,7 @@ export async function exportarRespuestasEncuesta(req, res) {
 }
 
 export async function obtenerResumenUsuario(req, res) {
-  const usuarioId = Number(req.params.usuarioId);
+  const usuarioId = Number(req.user?.id);
 
   if (!usuarioId) {
     return res.status(400).json({ message: 'Usuario invalido.' });
@@ -116,7 +126,7 @@ export async function obtenerResumenUsuario(req, res) {
 }
 
 export async function listarEncuestasUsuario(req, res) {
-  const usuarioId = Number(req.query.usuarioId);
+  const usuarioId = Number(req.user?.id);
 
   if (!usuarioId) {
     return res.status(400).json({ message: 'Usuario invalido.' });
@@ -222,6 +232,7 @@ function validarDatosEncuesta(body) {
 }
 
 export async function crearEncuesta(req, res) {
+  req.body.usuario_id = Number(req.user?.id);
   const errorValidacion = validarDatosEncuesta(req.body);
 
   if (errorValidacion) {
@@ -248,7 +259,7 @@ export async function crearEncuesta(req, res) {
 
 export async function duplicarEncuestaPropia(req, res) {
   const encuestaId = Number(req.params.id);
-  const usuarioId = Number(req.body.usuario_id);
+  const usuarioId = Number(req.user?.id);
 
   if (!encuestaId || !usuarioId) {
     return res.status(400).json({ message: 'Datos invalidos.' });
@@ -259,7 +270,9 @@ export async function duplicarEncuestaPropia(req, res) {
   try {
     await conexion.beginTransaction();
 
-    const filas = await obtenerDetalleEncuestaPorUsuario(encuestaId, usuarioId);
+    const filas = esAdministrador(req)
+      ? await obtenerDetalleEncuestaPorAdministrador(encuestaId)
+      : await obtenerDetalleEncuestaPorUsuario(encuestaId, usuarioId);
 
     if (filas.length === 0) {
       await rollbackSeguro(conexion, 'duplicarEncuestaPropia');
@@ -311,14 +324,16 @@ export async function duplicarEncuestaPropia(req, res) {
 
 export async function obtenerEncuestaPropia(req, res) {
   const encuestaId = Number(req.params.id);
-  const usuarioId = Number(req.query.usuarioId);
+  const usuarioId = Number(req.user?.id);
 
   if (!encuestaId || !usuarioId) {
     return res.status(400).json({ message: 'Datos invalidos.' });
   }
 
   try {
-    const filas = await obtenerDetalleEncuestaPorUsuario(encuestaId, usuarioId);
+    const filas = esAdministrador(req)
+      ? await obtenerDetalleEncuestaPorAdministrador(encuestaId)
+      : await obtenerDetalleEncuestaPorUsuario(encuestaId, usuarioId);
 
     if (filas.length === 0) {
       return res.status(404).json({ message: 'Encuesta no encontrada.' });
@@ -333,7 +348,8 @@ export async function obtenerEncuestaPropia(req, res) {
 
 export async function actualizarEncuestaBorrador(req, res) {
   const encuestaId = Number(req.params.id);
-  const usuarioId = Number(req.body.usuario_id);
+  const usuarioId = Number(req.user?.id);
+  req.body.usuario_id = usuarioId;
   const errorValidacion = validarDatosEncuesta(req.body);
 
   if (!encuestaId || !usuarioId) {
@@ -351,7 +367,7 @@ export async function actualizarEncuestaBorrador(req, res) {
 
     const encuesta = await obtenerEncuestaBase(encuestaId, conexion);
 
-    if (!encuesta || encuesta.usuario_id !== usuarioId) {
+    if (!encuesta || (encuesta.usuario_id !== usuarioId && !esAdministrador(req))) {
       await rollbackSeguro(conexion, 'actualizarEncuestaBorrador');
       return res.status(404).json({ message: 'Encuesta no encontrada.' });
     }
@@ -376,7 +392,7 @@ export async function actualizarEncuestaBorrador(req, res) {
 
 export async function publicarEncuesta(req, res) {
   const encuestaId = Number(req.params.id);
-  const usuarioId = Number(req.body.usuario_id);
+  const usuarioId = Number(req.user?.id);
 
   if (!encuestaId || !usuarioId) {
     return res.status(400).json({ message: 'Datos invalidos.' });
@@ -389,7 +405,7 @@ export async function publicarEncuesta(req, res) {
 
     const encuesta = await obtenerEncuestaBase(encuestaId, conexion);
 
-    if (!encuesta || encuesta.usuario_id !== usuarioId) {
+    if (!encuesta || (encuesta.usuario_id !== usuarioId && !esAdministrador(req))) {
       await rollbackSeguro(conexion, 'publicarEncuesta');
       return res.status(404).json({ message: 'Encuesta no encontrada.' });
     }
@@ -414,7 +430,7 @@ export async function publicarEncuesta(req, res) {
 
 export async function ocultarEncuesta(req, res) {
   const encuestaId = Number(req.params.id);
-  const usuarioId = Number(req.body.usuario_id);
+  const usuarioId = Number(req.user?.id);
   const estaOculta = Boolean(req.body.esta_oculta);
 
   if (!encuestaId || !usuarioId) {
@@ -428,7 +444,7 @@ export async function ocultarEncuesta(req, res) {
 
     const encuesta = await obtenerEncuestaBase(encuestaId, conexion);
 
-    if (!encuesta || encuesta.usuario_id !== usuarioId) {
+    if (!encuesta || (encuesta.usuario_id !== usuarioId && !esAdministrador(req))) {
       await rollbackSeguro(conexion, 'ocultarEncuesta');
       return res.status(404).json({ message: 'Encuesta no encontrada.' });
     }
@@ -455,7 +471,7 @@ export async function ocultarEncuesta(req, res) {
 
 export async function eliminarEncuestaPropia(req, res) {
   const encuestaId = Number(req.params.id);
-  const usuarioId = Number(req.query.usuarioId);
+  const usuarioId = Number(req.user?.id);
 
   if (!encuestaId || !usuarioId) {
     return res.status(400).json({ message: 'Datos invalidos.' });
@@ -468,7 +484,7 @@ export async function eliminarEncuestaPropia(req, res) {
 
     const encuesta = await obtenerEncuestaBase(encuestaId, conexion);
 
-    if (!encuesta || encuesta.usuario_id !== usuarioId) {
+    if (!encuesta || (encuesta.usuario_id !== usuarioId && !esAdministrador(req))) {
       await rollbackSeguro(conexion, 'eliminarEncuestaPropia');
       return res.status(404).json({ message: 'Encuesta no encontrada.' });
     }
@@ -488,17 +504,21 @@ export async function eliminarEncuestaPropia(req, res) {
 
 export async function listarRespuestasRecibidas(req, res) {
   const encuestaId = Number(req.params.id);
-  const usuarioId = Number(req.query.usuarioId);
+  const usuarioId = Number(req.user?.id);
 
   if (!encuestaId || !usuarioId) {
     return res.status(400).json({ message: 'Datos invalidos.' });
   }
 
   try {
-    const filas = await obtenerRespuestasRecibidas(encuestaId, usuarioId);
+    const filas = esAdministrador(req)
+      ? await obtenerRespuestasRecibidasComoAdministrador(encuestaId)
+      : await obtenerRespuestasRecibidas(encuestaId, usuarioId);
 
     if (filas.length === 0) {
-      const encuesta = await obtenerDetalleEncuestaPorUsuario(encuestaId, usuarioId);
+      const encuesta = esAdministrador(req)
+        ? await obtenerDetalleEncuestaPorAdministrador(encuestaId)
+        : await obtenerDetalleEncuestaPorUsuario(encuestaId, usuarioId);
 
       if (encuesta.length === 0) {
         return res.status(404).json({ message: 'Encuesta no encontrada.' });
@@ -520,7 +540,7 @@ export async function listarRespuestasRecibidas(req, res) {
 }
 
 export async function listarMisRespuestas(req, res) {
-  const usuarioId = Number(req.query.usuarioId);
+  const usuarioId = Number(req.user?.id);
 
   if (!usuarioId) {
     return res.status(400).json({ message: 'Usuario invalido.' });
@@ -537,7 +557,7 @@ export async function listarMisRespuestas(req, res) {
 
 export async function obtenerMiRespuesta(req, res) {
   const respuestaId = Number(req.params.respuestaId);
-  const usuarioId = Number(req.query.usuarioId);
+  const usuarioId = Number(req.user?.id);
 
   if (!respuestaId || !usuarioId) {
     return res.status(400).json({ message: 'Datos invalidos.' });
@@ -559,7 +579,8 @@ export async function obtenerMiRespuesta(req, res) {
 
 export async function responderEncuesta(req, res) {
   const encuestaId = Number(req.params.id);
-  const { usuario_id, respuestas } = req.body;
+  const usuario_id = Number(req.user?.id);
+  const { respuestas } = req.body;
 
   if (!encuestaId || !usuario_id || !Array.isArray(respuestas)) {
     return res.status(400).json({ message: 'Datos incompletos para registrar la respuesta.' });

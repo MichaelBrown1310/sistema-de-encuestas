@@ -1,8 +1,11 @@
 import bcrypt from 'bcryptjs';
-import { buscarUsuarioPorCorreo, crearUsuario } from '../models/userModel.js';
+import { buscarUsuarioPorCorreo, contarUsuarios, crearUsuario } from '../models/userModel.js';
+import { generarToken } from '../utils/authUtils.js';
+
+const ROLES_PERMITIDOS = ['usuario', 'admin'];
 
 export async function registrarUsuario(req, res) {
-  const { nombre, correo, password } = req.body;
+  const { nombre, correo, password, rol } = req.body;
 
   if (!nombre || !correo || !password) {
     return res.status(400).json({
@@ -19,11 +22,23 @@ export async function registrarUsuario(req, res) {
       });
     }
 
+    const totalUsuarios = await contarUsuarios();
+    const rolSolicitado = typeof rol === 'string' ? rol.trim().toLowerCase() : '';
+    const rolAsignado =
+      totalUsuarios === 0
+        ? 'admin'
+        : ROLES_PERMITIDOS.includes(rolSolicitado)
+          ? rolSolicitado
+          : 'usuario';
+
     const passwordHash = await bcrypt.hash(password, 10);
-    await crearUsuario({ nombre, correo, passwordHash });
+    await crearUsuario({ nombre, correo, rol: rolAsignado, passwordHash });
 
     return res.status(201).json({
-      message: 'Usuario registrado correctamente.'
+      message:
+        rolAsignado === 'admin'
+          ? 'Usuario registrado correctamente con rol admin.'
+          : 'Usuario registrado correctamente.'
     });
   } catch (error) {
     console.error('Error en register:', error);
@@ -31,6 +46,12 @@ export async function registrarUsuario(req, res) {
       message: 'Error interno del servidor al registrar.'
     });
   }
+}
+
+export async function obtenerSesionActual(req, res) {
+  return res.json({
+    user: req.user
+  });
 }
 
 export async function iniciarSesion(req, res) {
@@ -59,12 +80,16 @@ export async function iniciarSesion(req, res) {
       });
     }
 
+    const token = generarToken(usuario);
+
     return res.json({
       message: `Bienvenido, ${usuario.nombre}.`,
+      token,
       user: {
         id: usuario.id,
         nombre: usuario.nombre,
-        correo: usuario.correo
+        correo: usuario.correo,
+        rol: usuario.rol
       }
     });
   } catch (error) {

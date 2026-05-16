@@ -2,7 +2,9 @@
   <nav class="app-navbar">
     <div class="app-navbar__marca">
       <router-link to="/home" class="app-navbar__logo">Encuestas USC</router-link>
-      <p class="app-navbar__usuario" v-if="usuario">Hola, {{ usuario.nombre }}</p>
+      <p class="app-navbar__usuario" v-if="usuario">
+        Hola, {{ usuario.nombre }} ({{ usuario.rol }})
+      </p>
     </div>
 
     <div class="app-navbar__enlaces">
@@ -25,16 +27,14 @@
 
 <script setup lang="ts">
 import { IonButton } from '@ionic/vue';
+import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import {
-  limpiarUsuarioAutenticado,
-  obtenerUsuarioAutenticado,
-  type UsuarioAutenticado
-} from '../services/auth';
+import { useAuthStore } from '../stores/auth';
 
 const enrutador = useRouter();
 const ruta = useRoute();
-const usuario: UsuarioAutenticado | null = obtenerUsuarioAutenticado();
+const authStore = useAuthStore();
+const usuario = computed(() => authStore.user);
 
 const enlaces = [
   { to: '/home', label: 'Inicio' },
@@ -53,7 +53,7 @@ function esEnlaceActivo(destino: string) {
 }
 
 async function cerrarSesion() {
-  limpiarUsuarioAutenticado();
+  authStore.cerrarSesion();
   await enrutador.replace('/login');
 }
 </script>

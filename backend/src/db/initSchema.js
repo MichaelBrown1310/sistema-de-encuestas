@@ -49,10 +49,19 @@ export async function inicializarEsquema() {
       id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
       nombre VARCHAR(120) NOT NULL,
       correo VARCHAR(150) NOT NULL UNIQUE,
+      rol ENUM('usuario', 'admin') NOT NULL DEFAULT 'usuario',
       password_hash VARCHAR(255) NOT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  if (!(await existeColumna('usuarios', 'rol'))) {
+    await pool.query(`
+      ALTER TABLE usuarios
+      ADD COLUMN rol ENUM('usuario', 'admin') NOT NULL DEFAULT 'usuario'
+      AFTER correo
+    `);
+  }
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS encuestas (

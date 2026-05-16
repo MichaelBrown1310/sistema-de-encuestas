@@ -131,12 +131,12 @@ export interface MiRespuestaDetalle {
 }
 
 export async function obtenerResumenUsuario(usuarioId: number) {
-  const { data } = await api.get<ResumenEncuestas>(`/encuestas/resumen/${usuarioId}`);
+  const { data } = await api.get<ResumenEncuestas>('/encuestas/resumen');
   return data;
 }
 
 export async function obtenerEncuestasUsuario(usuarioId: number) {
-  const { data } = await api.get<Encuesta[]>(`/encuestas?usuarioId=${usuarioId}`);
+  const { data } = await api.get<Encuesta[]>('/encuestas');
   return data;
 }
 
@@ -151,7 +151,7 @@ export async function obtenerEncuestaPublicada(encuestaId: number) {
 }
 
 export async function obtenerEncuestaPropia(encuestaId: number, usuarioId: number) {
-  const { data } = await api.get<EncuestaDetallada>(`/encuestas/${encuestaId}?usuarioId=${usuarioId}`);
+  const { data } = await api.get<EncuestaDetallada>(`/encuestas/${encuestaId}`);
   return data;
 }
 
@@ -166,9 +166,7 @@ export async function actualizarEncuesta(encuestaId: number, datos: DatosNuevaEn
 }
 
 export async function publicarEncuesta(encuestaId: number, usuarioId: number) {
-  const { data } = await api.post(`/encuestas/${encuestaId}/publicar`, {
-    usuario_id: usuarioId
-  });
+  const { data } = await api.post(`/encuestas/${encuestaId}/publicar`);
   return data;
 }
 
@@ -178,28 +176,23 @@ export async function cambiarOcultamientoEncuesta(
   estaOculta: boolean
 ) {
   const { data } = await api.post(`/encuestas/${encuestaId}/ocultar`, {
-    usuario_id: usuarioId,
     esta_oculta: estaOculta
   });
   return data;
 }
 
 export async function eliminarEncuesta(encuestaId: number, usuarioId: number) {
-  const { data } = await api.delete(`/encuestas/${encuestaId}?usuarioId=${usuarioId}`);
+  const { data } = await api.delete(`/encuestas/${encuestaId}`);
   return data;
 }
 
 export async function duplicarEncuesta(encuestaId: number, usuarioId: number) {
-  const { data } = await api.post(`/encuestas/${encuestaId}/duplicar`, {
-    usuario_id: usuarioId
-  });
+  const { data } = await api.post(`/encuestas/${encuestaId}/duplicar`);
   return data;
 }
 
 export async function obtenerRespuestasRecibidas(encuestaId: number, usuarioId: number) {
-  const { data } = await api.get<RespuestasRecibidasEncuesta>(
-    `/encuestas/${encuestaId}/respuestas?usuarioId=${usuarioId}`
-  );
+  const { data } = await api.get<RespuestasRecibidasEncuesta>(`/encuestas/${encuestaId}/respuestas`);
   return data;
 }
 
@@ -211,7 +204,6 @@ export async function exportarRespuestasEncuesta(
   const extension = formato === 'excel' ? 'xls' : 'csv';
   const respuesta = await api.get(`/encuestas/${encuestaId}/exportar`, {
     params: {
-      usuarioId,
       formato
     },
     responseType: 'blob'
@@ -224,14 +216,12 @@ export async function exportarRespuestasEncuesta(
 }
 
 export async function obtenerMisRespuestas(usuarioId: number) {
-  const { data } = await api.get<MiRespuestaResumen[]>(`/encuestas/mis-respuestas?usuarioId=${usuarioId}`);
+  const { data } = await api.get<MiRespuestaResumen[]>('/encuestas/mis-respuestas');
   return data;
 }
 
 export async function obtenerMiRespuesta(respuestaId: number, usuarioId: number) {
-  const { data } = await api.get<MiRespuestaDetalle>(
-    `/encuestas/mis-respuestas/${respuestaId}?usuarioId=${usuarioId}`
-  );
+  const { data } = await api.get<MiRespuestaDetalle>(`/encuestas/mis-respuestas/${respuestaId}`);
   return data;
 }
 
@@ -241,7 +231,6 @@ export async function enviarRespuestasEncuesta(
   respuestas: RespuestaFormulario[]
 ) {
   const { data } = await api.post<RespuestaEnvioEncuesta>(`/encuestas/${encuestaId}/respuestas`, {
-    usuario_id: usuarioId,
     respuestas
   });
   return data;

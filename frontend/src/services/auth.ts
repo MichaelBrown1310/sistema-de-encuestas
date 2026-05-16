@@ -4,6 +4,7 @@ export interface DatosRegistro {
   nombre: string;
   correo: string;
   password: string;
+  rol?: 'usuario' | 'admin';
 }
 
 export interface DatosInicioSesion {
@@ -15,9 +16,15 @@ export interface UsuarioAutenticado {
   id: number;
   nombre: string;
   correo: string;
+  rol: 'usuario' | 'admin';
 }
 
-const CLAVE_USUARIO_AUTENTICADO = 'encuestas_usuario_autenticado';
+export interface SesionAutenticada {
+  token: string;
+  user: UsuarioAutenticado;
+}
+
+const CLAVE_SESION_AUTENTICADA = 'encuestas_sesion_autenticada';
 
 export async function registrarUsuario(datos: DatosRegistro) {
   const { data } = await api.post('/auth/register', datos);
@@ -25,29 +32,42 @@ export async function registrarUsuario(datos: DatosRegistro) {
 }
 
 export async function iniciarSesion(datos: DatosInicioSesion) {
-  const { data } = await api.post('/auth/login', datos);
+  const { data } = await api.post<SesionAutenticada & { message: string }>('/auth/login', datos);
   return data;
 }
 
-export function guardarUsuarioAutenticado(usuario: UsuarioAutenticado) {
-  localStorage.setItem(CLAVE_USUARIO_AUTENTICADO, JSON.stringify(usuario));
+export async function obtenerSesionActual() {
+  const { data } = await api.get<{ user: UsuarioAutenticado }>('/auth/me');
+  return data;
 }
 
-export function obtenerUsuarioAutenticado(): UsuarioAutenticado | null {
-  const usuarioGuardado = localStorage.getItem(CLAVE_USUARIO_AUTENTICADO);
+export function persistirSesionAutenticada(sesion: SesionAutenticada) {
+  localStorage.setItem(CLAVE_SESION_AUTENTICADA, JSON.stringify(sesion));
+}
 
-  if (!usuarioGuardado) {
+export function leerSesionPersistida(): SesionAutenticada | null {
+  const sesionGuardada = localStorage.getItem(CLAVE_SESION_AUTENTICADA);
+
+  if (!sesionGuardada) {
     return null;
   }
 
   try {
-    return JSON.parse(usuarioGuardado) as UsuarioAutenticado;
+    return JSON.parse(sesionGuardada) as SesionAutenticada;
   } catch {
-    localStorage.removeItem(CLAVE_USUARIO_AUTENTICADO);
+    localStorage.removeItem(CLAVE_SESION_AUTENTICADA);
     return null;
   }
 }
 
-export function limpiarUsuarioAutenticado() {
-  localStorage.removeItem(CLAVE_USUARIO_AUTENTICADO);
+export function obtenerUsuarioAutenticado(): UsuarioAutenticado | null {
+  return leerSesionPersistida()?.user || null;
+}
+
+export function obtenerTokenAutenticado(): string {
+  return leerSesionPersistida()?.token || '';
+}
+
+export function limpiarSesionPersistida() {
+  localStorage.removeItem(CLAVE_SESION_AUTENTICADA);
 }
