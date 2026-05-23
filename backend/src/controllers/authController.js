@@ -5,20 +5,22 @@ import { generarToken } from '../utils/authUtils.js';
 const ROLES_PERMITIDOS = ['usuario', 'admin'];
 
 export async function registrarUsuario(req, res) {
-  const { nombre, correo, password, rol, edad} = req.body;
+  const { nombre, correo, password, rol, edad } = req.body;
 
-  if (!nombre || !correo || !password|| !edad) {
+  if (!nombre || !correo || !password || !edad) {
     return res.status(400).json({
       message: 'Nombre, correo, contrasena y edad son obligatorios.'
     });
   }
 
-if (Number(edad) < 18) {
-  return res.status(400).json({
-    message: 'Solo se permiten usuarios mayores de 18 anos.'
-  });
-}
+
   try {
+
+    if (Number(edad) < 20) {
+      return res.status(400).json({
+      message: 'Solo se permiten usuarios mayores a 20 años.'
+    });
+  }
     const usuarioExistente = await buscarUsuarioPorCorreo(correo);
 
     if (usuarioExistente) {

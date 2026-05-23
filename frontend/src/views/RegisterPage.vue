@@ -35,9 +35,11 @@
               label="edad"
               label-placement="stacked"
               type="number"
-              placeholder="18"
+              placeholder="tu edad"
             />
           </ion-item>
+
+         
 
           <ion-item>
             <ion-input
@@ -80,7 +82,7 @@ const formulario = reactive({
   nombre: '',
   correo: '',
   password: '',
-  edad:''
+  edad: 0
 });
 
 const cargando = ref(false);
@@ -95,11 +97,14 @@ async function manejarRegistro() {
     mensaje.value = 'Debes completar todos los campos.';
     return;
   }
-   if (Number(formulario.edad)> 24|| Number(formulario.edad)<16 ) {
+  if(Number(formulario.edad) < 16 ||Number(formulario.edad) > 30 ){
+    
     tipoMensaje.value = 'danger';
-    mensaje.value = 'Debes tener entre 16 y 24 años.';
-    return;
+    mensaje.value = 'edad debe ser entre 16 y 30 años.';
+    
+    return 'edad debe ser entre 16 y 30 años';
   }
+
 
   try {
     cargando.value = true;
@@ -109,6 +114,7 @@ async function manejarRegistro() {
     formulario.nombre = '';
     formulario.correo = '';
     formulario.password = '';
+    formulario.edad = 0; 
   } catch (error: any) {
     tipoMensaje.value = 'danger';
     mensaje.value = error.response?.data?.message || 'No se pudo registrar el usuario.';

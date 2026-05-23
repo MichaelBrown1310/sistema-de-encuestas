@@ -4,6 +4,7 @@ export interface DatosRegistro {
   nombre: string;
   correo: string;
   password: string;
+  edad: number;
   rol?: 'usuario' | 'admin';
 }
 
