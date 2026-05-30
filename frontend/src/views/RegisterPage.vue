@@ -39,7 +39,16 @@
             />
           </ion-item>
 
-         
+          <ion-item>
+            <ion-input
+              v-model="formulario.textorro"
+              label="texto"
+              label-placement="stacked"
+              type="text"
+              placeholder="texto largo"
+            />
+          </ion-item>
+
 
           <ion-item>
             <ion-input
@@ -82,7 +91,8 @@ const formulario = reactive({
   nombre: '',
   correo: '',
   password: '',
-  edad: 0
+  edad: 0,
+  textorro: ''
 });
 
 const cargando = ref(false);
@@ -105,6 +115,12 @@ async function manejarRegistro() {
     return 'edad debe ser entre 16 y 30 años';
   }
 
+if(formulario.textorro.length < 30 || formulario.textorro.length >100){
+  tipoMensaje.value = 'danger'
+  mensaje.value = 'tu textorro debe ser mayor a 30 caracteres y menor a 100'
+  return;
+}
+
 
   try {
     cargando.value = true;
@@ -115,6 +131,7 @@ async function manejarRegistro() {
     formulario.correo = '';
     formulario.password = '';
     formulario.edad = 0; 
+    formulario.textorro = '';
   } catch (error: any) {
     tipoMensaje.value = 'danger';
     mensaje.value = error.response?.data?.message || 'No se pudo registrar el usuario.';

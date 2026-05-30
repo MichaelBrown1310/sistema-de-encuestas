@@ -21,6 +21,7 @@ export async function registrarUsuario(req, res) {
       message: 'Solo se permiten usuarios mayores a 20 años.'
     });
   }
+
     const usuarioExistente = await buscarUsuarioPorCorreo(correo);
 
     if (usuarioExistente) {
